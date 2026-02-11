@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiRequest, API_BASE_URL } from "@/lib/easycrip";
 
 type FaqItem = {
   question: string;
@@ -110,6 +111,30 @@ const keyConcepts: KeyConcept[] = [
 
 export default function FaqPage() {
   const [openItem, setOpenItem] = useState<number>(0);
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!API_BASE_URL) return () => {};
+
+    (async () => {
+      try {
+        await apiRequest({
+          path: "/api/keys/active",
+          method: "GET",
+          requireAuth: true,
+        });
+        if (!cancelled) setHasSession(true);
+      } catch {
+        if (!cancelled) setHasSession(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="min-h-screen px-4 py-8 text-zinc-900 sm:px-6 lg:px-8">
@@ -126,9 +151,11 @@ export default function FaqPage() {
               <Link href="/" className="btn-secondary px-3 py-2 text-sm">
                 Inicio
               </Link>
-              <Link href="/dashboard" className="btn-primary px-3 py-2 text-sm">
-                Ir para dashboard
-              </Link>
+              {hasSession && (
+                <Link href="/dashboard" className="btn-primary px-3 py-2 text-sm">
+                  Ir para dashboard
+                </Link>
+              )}
             </div>
           </div>
           <p className="panel-soft mt-4 px-3 py-2 text-sm text-zinc-700">
@@ -220,9 +247,11 @@ export default function FaqPage() {
             <li className="panel-soft px-3 py-2">Nao compartilhe token de sessao nem dados sensiveis em canais inseguros.</li>
           </ul>
           <div className="mt-4 flex justify-end">
-            <Link href="/dashboard" className="btn-primary px-4 py-2 text-sm">
-              Comecar agora no dashboard
-            </Link>
+            {hasSession && (
+              <Link href="/dashboard" className="btn-primary px-4 py-2 text-sm">
+                Comecar agora no dashboard
+              </Link>
+            )}
           </div>
         </section>
       </section>
