@@ -1,36 +1,174 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EasyCripApp (Frontend)
 
-## Getting Started
+Frontend web do projeto EasyCrip, focado em uso pessoal para:
 
-First, run the development server:
+- cadastro e login de usuario
+- geracao de chave AES-256
+- geracao de IV associado ao `key_id` ativo
+- consulta de FAQ e guia rapido de uso
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Stack principal:
+
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS 4
+
+## Objetivo do app
+
+Este frontend foi desenhado para fluxo simples e real:
+
+1. usuario cria conta
+2. usuario faz login
+3. usuario entra no dashboard protegido
+4. usuario gera chave AES-256
+5. usuario gera IV para o `key_id` ativo
+
+Nao existe fluxo de "criptografar mensagem" no frontend atual. O foco e geracao de chave/IV e experiencia de uso.
+
+## Rotas
+
+- `/`  
+  Tela inicial com abas de `Registrar` e `Login`.
+
+- `/dashboard`  
+  Area protegida por sessao com:
+  - dados da chave ativa
+  - botao para gerar nova chave AES-256
+  - geracao de IV com validacao de `key_id`
+
+- `/faq`  
+  Perguntas frequentes, passo a passo e boas praticas.
+
+## Requisitos
+
+- Node.js 20+ (recomendado)
+- npm 10+ (ou equivalente)
+- Backend EasyCrip online (Vercel/local)
+
+## Variaveis de ambiente
+
+Crie um arquivo `.env.local` com base no `.env.example`:
+
+```env
+NEXT_PUBLIC_API_URL=https://seu-backend.vercel.app
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Importante:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `NEXT_PUBLIC_API_URL` deve ser URL completa com `https://`
+- essa variavel e obrigatoria para registro/login/dashboard
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Instalacao e execucao local
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Abra:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `http://localhost:3000`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+```bash
+npm run dev    # desenvolvimento
+npm run lint   # validacao eslint
+npm run build  # build de producao
+npm run start  # sobe build local
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Fluxo de sessao
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- apos login, o token e salvo no `localStorage` em `easycrip_token`
+- se token existir, `/` redireciona para `/dashboard`
+- se token expirar/invalido, o app limpa sessao e redireciona para `/`
+
+## Regras de negocio implementadas no dashboard
+
+### Geracao de chave AES-256
+
+- chamada ao backend: `POST /api/keys/generate`
+- atualiza chave ativa na tela
+
+### Geracao de IV
+
+Antes de gerar IV, o frontend valida:
+
+1. formato do `key_id` (caracteres e tamanho)
+2. existencia do `key_id` no backend
+3. se o `key_id` e o ativo atual
+
+Somente `key_id` ativo e aceito.
+
+Chamada usada para validacao:
+
+- `GET /api/keys/list`
+
+Saida exibida:
+
+- `iv` em base64
+- bundle JSON:
+  - `key_id`
+  - `iv`
+  - `algorithm`
+  - `generated_at`
+
+## Estrutura de pastas (resumo)
+
+```txt
+src/
+  app/
+    page.tsx              # tela de login/registro
+    dashboard/page.tsx    # area protegida (chave e IV)
+    faq/page.tsx          # FAQ e guia de uso
+    layout.tsx
+    globals.css
+  lib/
+    easycrip.ts           # cliente API, sessao e helpers
+```
+
+## Deploy no Vercel
+
+1. Importar o repo do frontend no Vercel
+2. Definir env var:
+   - `NEXT_PUBLIC_API_URL` = URL do backend
+3. Fazer deploy
+4. Testar:
+   - registro/login
+   - acesso ao dashboard
+   - geracao de chave
+   - geracao de IV com `key_id` ativo
+
+## Troubleshooting
+
+### "NEXT_PUBLIC_API_URL nao configurada no frontend"
+
+- faltou definir a variavel no `.env.local` (local) ou no projeto Vercel
+
+### "Sessao expirada. Faca login novamente."
+
+- token expirou ou foi invalidado
+- faca login novamente
+
+### "key_id nao encontrado" / "key_id nao esta ativo"
+
+- confirme se voce gerou chave no usuario logado
+- atualize chave ativa no dashboard
+- use apenas o `key_id` ativo atual
+
+### Erros de CORS
+
+- backend precisa permitir o dominio do frontend em `CORS_ALLOW_ORIGINS`
+- redeploy backend apos alterar envs
+
+## Estado atual
+
+Frontend pronto para testes reais de produto:
+
+- onboarding (home + FAQ)
+- autenticacao
+- dashboard focado em chave AES-256 + IV
+- validacoes de uso para reduzir erro do usuario
+
