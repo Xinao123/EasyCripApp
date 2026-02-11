@@ -79,7 +79,7 @@ export default function HomePage() {
     if (!API_BASE_URL) {
       setNotice({
         type: "error",
-        message: "NEXT_PUBLIC_API_URL nao foi configurada no frontend.",
+        message: "Servico indisponivel no momento. Tente novamente em instantes.",
       });
       return;
     }
@@ -118,7 +118,7 @@ export default function HomePage() {
     if (!API_BASE_URL) {
       setNotice({
         type: "error",
-        message: "NEXT_PUBLIC_API_URL nao foi configurada no frontend.",
+        message: "Servico indisponivel no momento. Tente novamente em instantes.",
       });
       return;
     }
@@ -195,14 +195,10 @@ export default function HomePage() {
             </ol>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-            <span className="rounded-md bg-zinc-900 px-2 py-1 font-mono text-zinc-100">
-              NEXT_PUBLIC_API_URL
-            </span>
-            <span>backend configurado por ambiente</span>
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-2 text-xs text-zinc-600">
             <Link
               href="/faq"
-              className="ml-auto rounded-lg bg-zinc-200 px-3 py-1.5 font-semibold text-zinc-800 transition hover:bg-zinc-300"
+              className="rounded-lg bg-zinc-200 px-3 py-1.5 font-semibold text-zinc-800 transition hover:bg-zinc-300"
             >
               Ver FAQ
             </Link>
