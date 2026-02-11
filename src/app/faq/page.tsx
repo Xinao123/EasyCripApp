@@ -139,12 +139,6 @@ export default function FaqPage() {
               >
                 Inicio
               </Link>
-              <Link
-                href="/dashboard"
-                className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
-              >
-                Dashboard
-              </Link>
             </div>
           </div>
           <p className="mt-4 rounded-xl border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
