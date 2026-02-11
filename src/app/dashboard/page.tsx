@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -34,6 +34,13 @@ function noticeStyle(type: NoticeType) {
   return "border-zinc-300 bg-zinc-50 text-zinc-700";
 }
 
+function keyValidationClass(state: KeyValidationState) {
+  if (state === "valid") return "border-emerald-300 bg-emerald-50 text-emerald-900";
+  if (state === "invalid") return "border-rose-300 bg-rose-50 text-rose-900";
+  if (state === "checking") return "border-amber-300 bg-amber-50 text-amber-900";
+  return "border-zinc-300 bg-zinc-50 text-zinc-700";
+}
+
 function shortKey(value: string) {
   if (!value) return "-";
   if (value.length <= 18) return value;
@@ -54,18 +61,13 @@ export default function DashboardPage() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [token, setToken] = useState("");
   const [isBusy, setIsBusy] = useState(false);
-
   const [activeKey, setActiveKey] = useState<KeyInfo | null>(null);
   const [keyIdForNonce, setKeyIdForNonce] = useState("");
   const [nonceBundle, setNonceBundle] = useState<NonceBundle | null>(null);
-  const [keyValidation, setKeyValidation] = useState<{
-    state: KeyValidationState;
-    message: string;
-  }>({
+  const [keyValidation, setKeyValidation] = useState<{ state: KeyValidationState; message: string }>({
     state: "idle",
     message: "Informe o key_id para validar antes de gerar o nonce.",
   });
-
   const [notice, setNotice] = useState<{ type: NoticeType; message: string }>({
     type: "info",
     message: "Carregando painel...",
@@ -101,14 +103,10 @@ export default function DashboardPage() {
 
         setActiveKey(key);
         setKeyIdForNonce(key.key_id);
-        setKeyValidation({
-          state: "valid",
-          message: "key_id da chave ativa validado.",
-        });
+        setKeyValidation({ state: "valid", message: "key_id da chave ativa validado." });
         setNotice({ type: "info", message: "Chave ativa carregada. Gere um nonce para uso pessoal." });
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Falha ao carregar a chave ativa.";
-
         if (msg.toLowerCase().includes("sessao expirada")) {
           clearStoredToken();
           router.replace("/");
@@ -116,7 +114,6 @@ export default function DashboardPage() {
         }
 
         if (cancelled) return;
-
         setActiveKey(null);
         setNotice({
           type: "info",
@@ -130,14 +127,6 @@ export default function DashboardPage() {
     };
   }, [isHydrated, token, router]);
 
-  if (!isHydrated || !token) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-zinc-950 text-zinc-100">
-        <p className="text-sm">Validando sessao...</p>
-      </main>
-    );
-  }
-
   async function runAction<T>(fn: () => Promise<T>, successMessage: string) {
     setIsBusy(true);
     try {
@@ -146,13 +135,11 @@ export default function DashboardPage() {
       return data;
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Falha na operacao.";
-
       if (msg.toLowerCase().includes("sessao expirada")) {
         clearStoredToken();
         router.replace("/");
         return null;
       }
-
       setNotice({ type: "error", message: msg });
       return null;
     } finally {
@@ -173,13 +160,9 @@ export default function DashboardPage() {
     );
 
     if (!key) return;
-
     setActiveKey(key);
     setKeyIdForNonce(key.key_id);
-    setKeyValidation({
-      state: "valid",
-      message: "key_id da nova chave ativo e pronto para gerar nonce.",
-    });
+    setKeyValidation({ state: "valid", message: "key_id da nova chave ativo e pronto para gerar nonce." });
     setNonceBundle(null);
   }
 
@@ -196,22 +179,15 @@ export default function DashboardPage() {
     );
 
     if (!key) return;
-
     setActiveKey(key);
     setKeyIdForNonce(key.key_id);
-    setKeyValidation({
-      state: "valid",
-      message: "key_id da chave ativa validado.",
-    });
+    setKeyValidation({ state: "valid", message: "key_id da chave ativa validado." });
   }
 
   function onGenerateNonce() {
     const selectedKeyId = keyIdForNonce.trim();
     if (!selectedKeyId) {
-      setKeyValidation({
-        state: "invalid",
-        message: "Informe um key_id valido para gerar o nonce.",
-      });
+      setKeyValidation({ state: "invalid", message: "Informe um key_id valido para gerar o nonce." });
       setNotice({ type: "error", message: "Informe um key_id valido para gerar o nonce." });
       return;
     }
@@ -221,10 +197,7 @@ export default function DashboardPage() {
         state: "invalid",
         message: "Formato de key_id invalido. Use somente letras, numeros, '_' e '-'.",
       });
-      setNotice({
-        type: "error",
-        message: "Formato de key_id invalido. Corrija antes de gerar o nonce.",
-      });
+      setNotice({ type: "error", message: "Formato de key_id invalido. Corrija antes de gerar o nonce." });
       return;
     }
 
@@ -244,35 +217,20 @@ export default function DashboardPage() {
 
       const selectedKey = keyList.keys.find((k) => k.key_id === selectedKeyId);
       if (!selectedKey) {
-        setKeyValidation({
-          state: "invalid",
-          message: "key_id nao encontrado para este usuario.",
-        });
-        setNotice({
-          type: "error",
-          message: "key_id nao encontrado para este usuario.",
-        });
+        setKeyValidation({ state: "invalid", message: "key_id nao encontrado para este usuario." });
+        setNotice({ type: "error", message: "key_id nao encontrado para este usuario." });
         return;
       }
 
       const activeKeyId = keyList.active_key?.key_id ?? "";
       const isActiveSelection = selectedKey.is_active && selectedKey.key_id === activeKeyId;
       if (!isActiveSelection) {
-        setKeyValidation({
-          state: "invalid",
-          message: "Somente key_id ativo e aceito para gerar nonce.",
-        });
-        setNotice({
-          type: "error",
-          message: "Este key_id nao esta ativo. Use a chave ativa atual.",
-        });
+        setKeyValidation({ state: "invalid", message: "Somente key_id ativo e aceito para gerar nonce." });
+        setNotice({ type: "error", message: "Este key_id nao esta ativo. Use a chave ativa atual." });
         return;
       }
 
-      setKeyValidation({
-        state: "valid",
-        message: "key_id ativo validado no backend.",
-      });
+      setKeyValidation({ state: "valid", message: "key_id ativo validado no backend." });
 
       const bytes = new Uint8Array(12);
       crypto.getRandomValues(bytes);
@@ -293,11 +251,7 @@ export default function DashboardPage() {
         router.replace("/");
         return;
       }
-
-      setKeyValidation({
-        state: "invalid",
-        message: "Nao foi possivel validar o key_id no backend.",
-      });
+      setKeyValidation({ state: "invalid", message: "Nao foi possivel validar o key_id no backend." });
       setNotice({ type: "error", message: msg });
     } finally {
       setIsBusy(false);
@@ -306,23 +260,7 @@ export default function DashboardPage() {
 
   function onKeyIdChange(value: string) {
     setKeyIdForNonce(value);
-    setKeyValidation({
-      state: "idle",
-      message: "Edicao detectada. Clique em Gerar Nonce para validar novamente.",
-    });
-  }
-
-  function keyValidationClass() {
-    if (keyValidation.state === "valid") {
-      return "border-emerald-300 bg-emerald-50 text-emerald-900";
-    }
-    if (keyValidation.state === "invalid") {
-      return "border-rose-300 bg-rose-50 text-rose-900";
-    }
-    if (keyValidation.state === "checking") {
-      return "border-amber-300 bg-amber-50 text-amber-900";
-    }
-    return "border-zinc-300 bg-zinc-50 text-zinc-700";
+    setKeyValidation({ state: "idle", message: "Edicao detectada. Clique em Gerar Nonce para validar novamente." });
   }
 
   async function copyText(value: string, label: string) {
@@ -340,26 +278,39 @@ export default function DashboardPage() {
     router.replace("/");
   }
 
+  if (!isHydrated || !token) {
+    return (
+      <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-5xl space-y-4">
+          <div className="section-shell animate-pulse-soft h-16" />
+          <div className="section-shell animate-pulse-soft h-64" />
+          <div className="section-shell animate-pulse-soft h-72" />
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dcfce7,_transparent_33%),radial-gradient(circle_at_bottom_right,_#fde68a,_transparent_34%),#f4f0e6] px-4 py-8 text-zinc-900 sm:px-6 lg:px-8">
+    <main className="min-h-screen px-4 py-8 text-zinc-900 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-5xl space-y-5">
-        <header className="rounded-3xl border border-zinc-300/75 bg-white/80 p-5 shadow-xl shadow-zinc-900/5 backdrop-blur sm:p-6">
+        <header className="section-shell sticky top-4 z-20 animate-rise p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Produto real</p>
-              <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Gerador AES-256 para uso pessoal</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Dashboard seguro</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Gerador AES-256 pessoal</h1>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/faq"
-                className="rounded-lg bg-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-300"
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.1em] ${
+                  activeKey ? "bg-emerald-100 text-emerald-800" : "bg-zinc-200 text-zinc-700"
+                }`}
               >
+                {activeKey ? "Chave ativa" : "Sem chave ativa"}
+              </span>
+              <Link href="/faq" className="btn-secondary px-3 py-2 text-sm">
                 FAQ
               </Link>
-              <button
-                onClick={onLogout}
-                className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
-              >
+              <button onClick={onLogout} className="btn-ghost-dark px-3 py-2 text-sm">
                 Encerrar sessao
               </button>
             </div>
@@ -368,84 +319,85 @@ export default function DashboardPage() {
           <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${noticeStyle(notice.type)}`}>{notice.message}</p>
         </header>
 
-        <section className="rounded-3xl border border-zinc-300/75 bg-white/80 p-5 shadow-lg shadow-zinc-900/5 backdrop-blur sm:p-6">
-          <h2 className="text-lg font-bold">Chave ativa</h2>
+        <section className="grid gap-5 lg:grid-cols-2">
+          <article className="section-shell animate-rise p-5 sm:p-6">
+            <h2 className="text-lg font-black">Chave ativa</h2>
+            <p className="mt-1 text-sm text-zinc-600">Visualize o key_id atual e controle a rotacao.</p>
 
-          <div className="mt-3 space-y-1 text-sm text-zinc-700">
-            <p>
-              <span className="font-semibold text-zinc-900">key_id:</span>{" "}
-              {activeKey ? shortKey(activeKey.key_id) : "Nenhuma chave ativa"}
-            </p>
-            <p>
-              <span className="font-semibold text-zinc-900">versao:</span> {activeKey ? activeKey.version : "-"}
-            </p>
-            <p>
-              <span className="font-semibold text-zinc-900">expira em:</span>{" "}
-              {activeKey ? new Date(activeKey.expires_at).toLocaleString() : "-"}
-            </p>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={onGenerateKey}
-              disabled={isBusy}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Gerar nova chave AES-256
-            </button>
-            <button
-              onClick={onRefreshActiveKey}
-              disabled={isBusy}
-              className="rounded-lg bg-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Atualizar chave ativa
-            </button>
-            <button
-              onClick={() => copyText(activeKey?.key_id ?? "", "key_id")}
-              disabled={!activeKey?.key_id}
-              className="rounded-lg bg-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Copiar key_id
-            </button>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-zinc-300/75 bg-white/80 p-5 shadow-lg shadow-zinc-900/5 backdrop-blur sm:p-6">
-          <h2 className="text-lg font-bold">Gerar Nonce com key_id</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Gere um nonce aleatorio (12 bytes, base64) associado ao seu key_id para uso nas operacoes AES-256-GCM.
-          </p>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div>
-              <label htmlFor="key-id" className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                key_id
-              </label>
-              <input
-                id="key-id"
-                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-emerald-400 transition focus:ring"
-                value={keyIdForNonce}
-                onChange={(e) => onKeyIdChange(e.target.value)}
-                placeholder="Cole ou use o key_id da chave ativa"
-              />
+            <div className="panel-soft mt-4 space-y-2 p-3 text-sm text-zinc-700">
+              <p>
+                <span className="font-semibold text-zinc-900">key_id:</span>{" "}
+                <span className="font-mono">{activeKey ? shortKey(activeKey.key_id) : "Nenhuma chave ativa"}</span>
+              </p>
+              <p>
+                <span className="font-semibold text-zinc-900">versao:</span> {activeKey ? activeKey.version : "-"}
+              </p>
+              <p>
+                <span className="font-semibold text-zinc-900">expira em:</span>{" "}
+                {activeKey ? new Date(activeKey.expires_at).toLocaleString() : "-"}
+              </p>
             </div>
 
-            <button
-              onClick={onGenerateNonce}
-              disabled={isBusy || keyValidation.state === "checking"}
-              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {keyValidation.state === "checking" ? "Validando..." : "Gerar Nonce"}
-            </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button onClick={onGenerateKey} disabled={isBusy} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                Gerar nova chave AES-256
+              </button>
+              <button onClick={onRefreshActiveKey} disabled={isBusy} className="btn-secondary px-4 py-2 text-sm disabled:opacity-60">
+                Atualizar chave ativa
+              </button>
+              <button
+                onClick={() => copyText(activeKey?.key_id ?? "", "key_id")}
+                disabled={!activeKey?.key_id}
+                className="btn-secondary px-4 py-2 text-sm disabled:opacity-60"
+              >
+                Copiar key_id
+              </button>
+            </div>
+          </article>
+
+          <article className="section-shell animate-rise p-5 sm:p-6" style={{ animationDelay: "80ms" }}>
+            <h2 className="text-lg font-black">Gerar nonce com key_id</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              Gere nonce (12 bytes, base64) apenas para key_id ativo e use no fluxo AES-GCM.
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">key_id</span>
+                <input
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-[var(--ring)] transition focus:ring-4"
+                  value={keyIdForNonce}
+                  onChange={(e) => onKeyIdChange(e.target.value)}
+                  placeholder="Cole ou use o key_id da chave ativa"
+                />
+              </label>
+
+              <button onClick={onGenerateNonce} disabled={isBusy || keyValidation.state === "checking"} className="btn-primary px-4 py-2 text-sm disabled:opacity-60">
+                {keyValidation.state === "checking" ? "Validando..." : "Gerar nonce"}
+              </button>
+            </div>
+
+            <p className={`mt-3 rounded-xl border px-3 py-2 text-sm ${keyValidationClass(keyValidation.state)}`}>
+              {keyValidation.message}
+            </p>
+
+            <p className="mt-3 text-xs text-zinc-500">
+              Boa pratica: nunca reutilize nonce com o mesmo key_id em operacoes diferentes.
+            </p>
+          </article>
+        </section>
+
+        <section className="section-shell animate-rise p-5 sm:p-6" style={{ animationDelay: "130ms" }}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-black">Saida pronta para integracao</h2>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">AES-256-GCM</span>
           </div>
 
-          <p className={`mt-3 rounded-xl border px-3 py-2 text-sm ${keyValidationClass()}`}>
-            {keyValidation.message}
-          </p>
-
-          <div className="mt-4 space-y-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">nonce (base64)</label>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div className="panel-soft p-3">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                nonce (base64)
+              </label>
               <input
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-xs outline-none"
                 value={nonceBundle?.nonce ?? ""}
@@ -454,17 +406,15 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">bundle (json)</label>
+            <div className="panel-soft p-3">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                bundle (json)
+              </label>
               <textarea
                 className="min-h-28 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-xs outline-none"
                 readOnly
-                value={
-                  nonceBundle
-                    ? JSON.stringify(nonceBundle, null, 2)
-                    : ""
-                }
-                placeholder="Bundle key_id + nonce"
+                value={nonceBundle ? JSON.stringify(nonceBundle, null, 2) : ""}
+                placeholder="Bundle key_id + nonce + algorithm + generated_at"
               />
             </div>
           </div>
@@ -473,25 +423,20 @@ export default function DashboardPage() {
             <button
               onClick={() => copyText(nonceBundle?.nonce ?? "", "Nonce")}
               disabled={!nonceBundle?.nonce}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-primary px-4 py-2 text-sm disabled:opacity-60"
             >
-              Copiar Nonce
+              Copiar nonce
             </button>
             <button
               onClick={() => copyText(nonceBundle ? JSON.stringify(nonceBundle) : "", "Bundle")}
               disabled={!nonceBundle}
-              className="rounded-lg bg-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-secondary px-4 py-2 text-sm disabled:opacity-60"
             >
               Copiar bundle JSON
             </button>
           </div>
-
-          <p className="mt-4 text-xs text-zinc-500">
-            Boa pratica: nao reutilize o mesmo nonce com o mesmo key_id em multiplas operacoes AES-GCM.
-          </p>
         </section>
       </section>
     </main>
   );
 }
-

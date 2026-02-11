@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { API_BASE_URL, apiRequest, getStoredToken, setStoredToken } from "@/lib/easycrip";
 
 type AuthMode = "register" | "login";
+type NoticeType = "info" | "success" | "error";
 
 type LoginResponse = {
   access_token: string;
@@ -13,27 +14,21 @@ type LoginResponse = {
   expires_in: number;
 };
 
-type NoticeType = "info" | "success" | "error";
-
-const highlights = [
-  { label: "Seguranca", value: "AES-256-GCM" },
-  { label: "Fluxo", value: "Registro -> Login -> Dashboard" },
-  { label: "Gestao", value: "Key ID ativo + Nonce unico" },
+const valuePills = [
+  { title: "Seguranca", text: "AES-256-GCM com nonce unico" },
+  { title: "Fluxo", text: "Cadastro -> Login -> Dashboard" },
+  { title: "Uso real", text: "Geracao de chave e operacao pessoal" },
 ];
 
-const onboardingSteps = [
+const quickSteps = [
   "Crie seu usuario com email valido.",
-  "Acesse o painel protegido apos login.",
-  "Gere chave AES-256 e nonce para uso no seu fluxo.",
+  "Faca login e acesse o painel protegido.",
+  "Gere sua chave ativa e nonce no dashboard.",
 ];
 
 function noticeStyle(type: NoticeType) {
-  if (type === "success") {
-    return "border-emerald-300 bg-emerald-50 text-emerald-900";
-  }
-  if (type === "error") {
-    return "border-rose-300 bg-rose-50 text-rose-900";
-  }
+  if (type === "success") return "border-emerald-300 bg-emerald-50 text-emerald-900";
+  if (type === "error") return "border-rose-300 bg-rose-50 text-rose-900";
   return "border-zinc-300 bg-zinc-50 text-zinc-700";
 }
 
@@ -47,10 +42,10 @@ function passwordStrength(password: string) {
 }
 
 function strengthMeta(score: number) {
-  if (score <= 1) return { label: "Fraca", cls: "bg-rose-500", text: "text-rose-700" };
-  if (score === 2) return { label: "Media", cls: "bg-amber-500", text: "text-amber-700" };
-  if (score === 3) return { label: "Boa", cls: "bg-emerald-500", text: "text-emerald-700" };
-  return { label: "Forte", cls: "bg-emerald-600", text: "text-emerald-800" };
+  if (score <= 1) return { label: "Fraca", bar: "bg-rose-500", text: "text-rose-700" };
+  if (score === 2) return { label: "Media", bar: "bg-amber-500", text: "text-amber-700" };
+  if (score === 3) return { label: "Boa", bar: "bg-emerald-500", text: "text-emerald-700" };
+  return { label: "Forte", bar: "bg-emerald-600", text: "text-emerald-800" };
 }
 
 export default function HomePage() {
@@ -64,7 +59,7 @@ export default function HomePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<{ type: NoticeType; message: string }>({
     type: "info",
-    message: "Crie sua conta ou faca login para acessar seu painel de chaves.",
+    message: "Crie sua conta ou faca login para continuar.",
   });
 
   const strength = useMemo(() => strengthMeta(passwordStrength(password)), [password]);
@@ -83,12 +78,10 @@ export default function HomePage() {
       });
       return;
     }
-
     if (password.length < 8) {
       setNotice({ type: "error", message: "A senha precisa ter no minimo 8 caracteres." });
       return;
     }
-
     if (password !== confirmPassword) {
       setNotice({ type: "error", message: "As senhas nao coincidem." });
       return;
@@ -101,11 +94,10 @@ export default function HomePage() {
         method: "POST",
         body: { username, email, password },
       });
-
       setNotice({ type: "success", message: "Cadastro concluido. Agora faca login." });
       setMode("login");
-      setConfirmPassword("");
       setPassword("");
+      setConfirmPassword("");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha no cadastro.";
       setNotice({ type: "error", message });
@@ -130,7 +122,6 @@ export default function HomePage() {
         method: "POST",
         body: { username, password },
       });
-
       setStoredToken(data.access_token);
       setNotice({ type: "success", message: "Login realizado com sucesso." });
       router.push("/dashboard");
@@ -143,93 +134,81 @@ export default function HomePage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_0%_0%,_#c7f9cc_0%,_#f6f3ec_40%),radial-gradient(circle_at_100%_100%,_#fde68a_0%,_#f6f3ec_35%),#f6f3ec] px-4 py-8 text-zinc-900 sm:px-6 lg:px-10">
-      <div className="pointer-events-none absolute -left-24 top-8 h-72 w-72 rounded-full bg-emerald-300/40 blur-3xl" />
-      <div className="pointer-events-none absolute -right-20 top-1/4 h-64 w-64 rounded-full bg-amber-300/40 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-1/4 h-52 w-52 rounded-full bg-lime-200/35 blur-3xl" />
-
-      <section className="relative z-10 mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.12fr_0.88fr]">
-        <article className="rounded-[28px] border border-zinc-300/70 bg-white/80 p-6 shadow-[0_20px_80px_-35px_rgba(24,24,27,0.35)] backdrop-blur sm:p-8">
-          <p className="inline-flex items-center rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-700">
-            EasyCrip Platform
+    <main className="min-h-screen px-4 py-8 text-zinc-900 sm:px-6 lg:px-10">
+      <section className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <article className="section-shell animate-rise p-6 sm:p-8">
+          <p className="inline-flex rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-700">
+            EasyCrip
           </p>
 
           <h1 className="mt-4 text-4xl font-black leading-tight tracking-tight sm:text-5xl">
-            Sua entrada segura
+            Chaves AES com
             <br />
-            para criptografia AES.
+            <span className="text-gradient-brand">experiencia simples e segura</span>
           </h1>
 
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-700 sm:text-base">
-            Onboarding rapido para gerar chaves AES-256, operar com nonce unico (GCM) e manter
-            um fluxo claro para testes reais e integracoes.
+            Plataforma focada em uso real: autenticacao, chave ativa, nonce e operacao clara para
+            quem precisa trabalhar com criptografia sem complexidade visual.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {highlights.map((item) => (
-              <div
-                key={item.label}
-                className="rounded-xl border border-zinc-300/70 bg-zinc-50/90 px-3 py-3"
+            {valuePills.map((item, index) => (
+              <article
+                key={item.title}
+                className="panel-soft animate-rise px-3 py-3"
+                style={{ animationDelay: `${index * 80}ms` }}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                  {item.label}
+                <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-zinc-500">
+                  {item.title}
                 </p>
-                <p className="mt-1 text-sm font-semibold text-zinc-900">{item.value}</p>
-              </div>
+                <p className="mt-1 text-sm font-semibold text-zinc-900">{item.text}</p>
+              </article>
             ))}
           </div>
 
-          <div className="mt-6 rounded-2xl border border-zinc-300/75 bg-white/70 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              Como funciona
-            </p>
+          <section className="panel-soft mt-6 animate-rise p-4" style={{ animationDelay: "190ms" }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Primeiros passos</p>
             <ol className="mt-3 space-y-2 text-sm text-zinc-700">
-              {onboardingSteps.map((step, index) => (
+              {quickSteps.map((step, index) => (
                 <li key={step} className="flex items-start gap-2">
-                  <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white">
                     {index + 1}
                   </span>
                   <span>{step}</span>
                 </li>
               ))}
             </ol>
-          </div>
+          </section>
 
-          <div className="mt-5 flex flex-wrap items-center justify-end gap-2 text-xs text-zinc-600">
-            <Link
-              href="/faq"
-              className="rounded-lg bg-zinc-200 px-3 py-1.5 font-semibold text-zinc-800 transition hover:bg-zinc-300"
-            >
-              Ver FAQ
+          <div className="mt-5 flex justify-end">
+            <Link href="/faq" className="btn-secondary px-3 py-1.5 text-xs">
+              Ver FAQ e exemplos de uso
             </Link>
           </div>
         </article>
 
-        <article className="relative overflow-hidden rounded-[28px] border border-zinc-300/40 bg-zinc-950 p-6 text-zinc-100 shadow-[0_24px_90px_-35px_rgba(9,9,11,0.85)] sm:p-8">
-          <div className="pointer-events-none absolute -right-12 -top-14 h-48 w-48 rounded-full bg-emerald-300/30 blur-3xl" />
-          <div className="pointer-events-none absolute -left-14 bottom-0 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
+        <article className="section-shell surface-dark animate-rise relative overflow-hidden p-6 sm:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-300/20 blur-3xl" />
+          <div className="pointer-events-none absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
 
           <div className="relative">
             <div className="inline-flex rounded-xl border border-zinc-700 bg-zinc-900/80 p-1">
               <button
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  mode === "register"
-                    ? "bg-zinc-100 text-zinc-900 shadow"
-                    : "text-zinc-300 hover:text-white"
-                }`}
-                onClick={() => setMode("register")}
                 type="button"
+                onClick={() => setMode("register")}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  mode === "register" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:text-white"
+                }`}
               >
                 Registrar
               </button>
               <button
-                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  mode === "login"
-                    ? "bg-zinc-100 text-zinc-900 shadow"
-                    : "text-zinc-300 hover:text-white"
-                }`}
-                onClick={() => setMode("login")}
                 type="button"
+                onClick={() => setMode("login")}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  mode === "login" ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:text-white"
+                }`}
               >
                 Login
               </button>
@@ -240,17 +219,15 @@ export default function HomePage() {
             </h2>
             <p className="mt-1 text-sm text-zinc-400">
               {mode === "register"
-                ? "Use credenciais fortes para proteger o acesso ao seu dashboard."
-                : "Autentique-se para gerenciar chave ativa e nonce."}
+                ? "Use credenciais fortes para proteger seu acesso."
+                : "Acesse para gerenciar chave ativa e nonce."}
             </p>
 
             <div className="mt-5 grid gap-3">
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                  Usuario
-                </span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Usuario</span>
                 <input
-                  className="rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2 text-sm outline-none ring-emerald-400 transition placeholder:text-zinc-500 focus:ring"
+                  className="field-core"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="seu_usuario"
@@ -260,11 +237,9 @@ export default function HomePage() {
 
               {mode === "register" && (
                 <label className="grid gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                    Email
-                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Email</span>
                   <input
-                    className="rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2 text-sm outline-none ring-emerald-400 transition placeholder:text-zinc-500 focus:ring"
+                    className="field-core"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="voce@dominio.com"
@@ -274,11 +249,9 @@ export default function HomePage() {
               )}
 
               <label className="grid gap-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
-                  Senha
-                </span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">Senha</span>
                 <input
-                  className="rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2 text-sm outline-none ring-emerald-400 transition placeholder:text-zinc-500 focus:ring"
+                  className="field-core"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -294,7 +267,7 @@ export default function HomePage() {
                       Confirmar senha
                     </span>
                     <input
-                      className="rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2 text-sm outline-none ring-emerald-400 transition placeholder:text-zinc-500 focus:ring"
+                      className="field-core"
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -303,7 +276,7 @@ export default function HomePage() {
                     />
                   </label>
 
-                  <div className="rounded-xl border border-zinc-700 bg-zinc-900/70 p-3">
+                  <div className="panel-soft bg-zinc-900/70 p-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold uppercase tracking-[0.12em] text-zinc-400">
                         Forca da senha
@@ -311,11 +284,11 @@ export default function HomePage() {
                       <span className={`font-bold ${strength.text}`}>{strength.label}</span>
                     </div>
                     <div className="mt-2 grid grid-cols-4 gap-1.5">
-                      {[0, 1, 2, 3].map((index) => (
+                      {[0, 1, 2, 3].map((idx) => (
                         <span
-                          key={index}
+                          key={idx}
                           className={`h-1.5 rounded-full ${
-                            index < passwordStrength(password) ? strength.cls : "bg-zinc-700"
+                            idx < passwordStrength(password) ? strength.bar : "bg-zinc-700"
                           }`}
                         />
                       ))}
@@ -329,7 +302,7 @@ export default function HomePage() {
               type="button"
               disabled={isSubmitting}
               onClick={mode === "register" ? onRegister : onLogin}
-              className="mt-5 w-full rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-black text-zinc-900 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-primary mt-5 w-full px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Processando..." : mode === "register" ? "Criar minha conta" : "Entrar agora"}
             </button>
@@ -341,7 +314,7 @@ export default function HomePage() {
             <p className="mt-3 text-center text-xs text-zinc-400">
               Duvidas?{" "}
               <Link href="/faq" className="font-semibold text-emerald-300 hover:text-emerald-200">
-                Acesse o FAQ
+                Consulte o FAQ
               </Link>
             </p>
           </div>
