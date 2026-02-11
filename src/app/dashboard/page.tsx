@@ -241,8 +241,8 @@ export default function DashboardPage() {
         requireAuth: true,
       });
 
-      const exists = keyList.keys.some((k) => k.key_id === selectedKeyId);
-      if (!exists) {
+      const selectedKey = keyList.keys.find((k) => k.key_id === selectedKeyId);
+      if (!selectedKey) {
         setKeyValidation({
           state: "invalid",
           message: "key_id nao encontrado para este usuario.",
@@ -254,9 +254,23 @@ export default function DashboardPage() {
         return;
       }
 
+      const activeKeyId = keyList.active_key?.key_id ?? "";
+      const isActiveSelection = selectedKey.is_active && selectedKey.key_id === activeKeyId;
+      if (!isActiveSelection) {
+        setKeyValidation({
+          state: "invalid",
+          message: "Somente key_id ativo e aceito para gerar IV.",
+        });
+        setNotice({
+          type: "error",
+          message: "Este key_id nao esta ativo. Use a chave ativa atual.",
+        });
+        return;
+      }
+
       setKeyValidation({
         state: "valid",
-        message: "key_id valido e confirmado no backend.",
+        message: "key_id ativo validado no backend.",
       });
 
       const bytes = new Uint8Array(16);
