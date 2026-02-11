@@ -122,7 +122,7 @@ export default function HomePage() {
       await apiRequest({
         path: "/api/auth/register",
         method: "POST",
-        body: { username, email, password },
+        body: { username, email, password, confirm_password: confirmPassword },
       });
       setNotice({ type: "success", message: "Cadastro concluido. Agora faca login." });
       setMode("login");
