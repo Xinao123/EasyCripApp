@@ -3,27 +3,15 @@ export type HttpMethod = "GET" | "POST";
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
 export const API_BASE_URL = RAW_API_URL.replace(/\/$/, "");
 
-export const STORAGE_KEYS = {
-  token: "easycrip_token",
-} as const;
+const LEGACY_TOKEN_STORAGE_KEY = "easycrip_token";
 
 export function isAbsoluteHttpUrl(value: string) {
   return /^https?:\/\//i.test(value);
 }
 
-export function getStoredToken() {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(STORAGE_KEYS.token) || "";
-}
-
-export function setStoredToken(token: string) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEYS.token, token);
-}
-
 export function clearStoredToken() {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(STORAGE_KEYS.token);
+  window.localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
 }
 
 type ApiRequestOptions = {
@@ -74,6 +62,7 @@ export async function apiRequest<T>({
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
+    credentials: "include",
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });

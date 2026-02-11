@@ -3,15 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL, apiRequest, getStoredToken, setStoredToken } from "@/lib/easycrip";
+import { API_BASE_URL, apiRequest, clearStoredToken } from "@/lib/easycrip";
 
 type AuthMode = "register" | "login";
 type NoticeType = "info" | "success" | "error";
 
 type LoginResponse = {
-  access_token: string;
+  access_token?: string | null;
   token_type: string;
   expires_in: number;
+};
+
+type SessionProbe = {
+  key_id: string;
 };
 
 const valuePills = [
@@ -34,7 +38,7 @@ function noticeStyle(type: NoticeType) {
 
 function passwordStrength(password: string) {
   let score = 0;
-  if (password.length >= 8) score += 1;
+  if (password.length >= 10) score += 1;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
   if (/\d/.test(password)) score += 1;
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
@@ -65,9 +69,28 @@ export default function HomePage() {
   const strength = useMemo(() => strengthMeta(passwordStrength(password)), [password]);
 
   useEffect(() => {
-    if (getStoredToken()) {
-      router.replace("/dashboard");
-    }
+    let cancelled = false;
+
+    clearStoredToken(); // cleanup de versoes antigas que usavam localStorage
+
+    if (!API_BASE_URL) return () => {};
+
+    (async () => {
+      try {
+        await apiRequest<SessionProbe>({
+          path: "/api/keys/active",
+          method: "GET",
+          requireAuth: true,
+        });
+        if (!cancelled) router.replace("/dashboard");
+      } catch {
+        // sem sessao ativa: permanece na pagina de login/registro
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   async function onRegister() {
@@ -78,8 +101,15 @@ export default function HomePage() {
       });
       return;
     }
-    if (password.length < 8) {
-      setNotice({ type: "error", message: "A senha precisa ter no minimo 8 caracteres." });
+    if (password.length < 10) {
+      setNotice({ type: "error", message: "A senha precisa ter no minimo 10 caracteres." });
+      return;
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setNotice({
+        type: "error",
+        message: "Use ao menos 1 maiuscula, 1 minuscula, 1 numero e 1 simbolo.",
+      });
       return;
     }
     if (password !== confirmPassword) {
@@ -117,12 +147,12 @@ export default function HomePage() {
 
     setIsSubmitting(true);
     try {
-      const data = await apiRequest<LoginResponse>({
+      await apiRequest<LoginResponse>({
         path: "/api/auth/login",
         method: "POST",
         body: { username, password },
       });
-      setStoredToken(data.access_token);
+      clearStoredToken();
       setNotice({ type: "success", message: "Login realizado com sucesso." });
       router.push("/dashboard");
     } catch (error) {

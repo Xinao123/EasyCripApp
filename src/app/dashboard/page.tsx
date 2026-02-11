@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiRequest, clearStoredToken, getStoredToken } from "@/lib/easycrip";
+import { apiRequest, clearStoredToken } from "@/lib/easycrip";
 
 type KeyInfo = {
   key_id: string;
@@ -59,7 +59,6 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [isHydrated, setIsHydrated] = useState(false);
-  const [token, setToken] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [activeKey, setActiveKey] = useState<KeyInfo | null>(null);
   const [keyIdForNonce, setKeyIdForNonce] = useState("");
@@ -75,7 +74,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      setToken(getStoredToken());
+      clearStoredToken(); // cleanup de versoes antigas
       setIsHydrated(true);
     });
     return () => window.cancelAnimationFrame(frame);
@@ -83,10 +82,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (!token) {
-      router.replace("/");
-      return;
-    }
 
     let cancelled = false;
 
@@ -95,7 +90,6 @@ export default function DashboardPage() {
         const key = await apiRequest<KeyInfo>({
           path: "/api/keys/active",
           method: "GET",
-          token,
           requireAuth: true,
         });
 
@@ -125,7 +119,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [isHydrated, token, router]);
+  }, [isHydrated, router]);
 
   async function runAction<T>(fn: () => Promise<T>, successMessage: string) {
     setIsBusy(true);
@@ -153,7 +147,6 @@ export default function DashboardPage() {
         apiRequest({
           path: "/api/keys/generate",
           method: "POST",
-          token,
           requireAuth: true,
         }),
       "Nova chave AES-256 gerada com sucesso.",
@@ -172,7 +165,6 @@ export default function DashboardPage() {
         apiRequest({
           path: "/api/keys/active",
           method: "GET",
-          token,
           requireAuth: true,
         }),
       "Chave ativa atualizada.",
@@ -211,7 +203,6 @@ export default function DashboardPage() {
       const keyList = await apiRequest<KeyListResponse>({
         path: "/api/keys/list",
         method: "GET",
-        token,
         requireAuth: true,
       });
 
@@ -273,12 +264,22 @@ export default function DashboardPage() {
     }
   }
 
-  function onLogout() {
-    clearStoredToken();
-    router.replace("/");
+  async function onLogout() {
+    try {
+      await apiRequest({
+        path: "/api/auth/logout",
+        method: "POST",
+        requireAuth: true,
+      });
+    } catch {
+      // ignora erro e encerra sessao local de qualquer forma
+    } finally {
+      clearStoredToken();
+      router.replace("/");
+    }
   }
 
-  if (!isHydrated || !token) {
+  if (!isHydrated) {
     return (
       <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
         <section className="mx-auto max-w-5xl space-y-4">
