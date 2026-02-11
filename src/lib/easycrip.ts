@@ -11,15 +11,6 @@ export function isAbsoluteHttpUrl(value: string) {
   return /^https?:\/\//i.test(value);
 }
 
-export function pretty(data: unknown) {
-  if (typeof data === "string") return data;
-  try {
-    return JSON.stringify(data, null, 2);
-  } catch {
-    return String(data);
-  }
-}
-
 export function getStoredToken() {
   if (typeof window === "undefined") return "";
   return window.localStorage.getItem(STORAGE_KEYS.token) || "";
