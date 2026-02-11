@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest, clearStoredToken, getStoredToken } from "@/lib/easycrip";
 
@@ -348,12 +349,20 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Produto real</p>
               <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Gerador AES-256 para uso pessoal</h1>
             </div>
-            <button
-              onClick={onLogout}
-              className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
-            >
-              Encerrar sessao
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/faq"
+                className="rounded-lg bg-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-300"
+              >
+                FAQ
+              </Link>
+              <button
+                onClick={onLogout}
+                className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
+              >
+                Encerrar sessao
+              </button>
+            </div>
           </div>
 
           <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${noticeStyle(notice.type)}`}>{notice.message}</p>

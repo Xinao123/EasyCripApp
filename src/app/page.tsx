@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL, apiRequest, getStoredToken, setStoredToken } from "@/lib/easycrip";
 
@@ -130,7 +131,7 @@ export default function HomePage() {
 
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-700 sm:text-base">
             Fluxo de producao simplificado: cadastre o usuario, faca login e acesse um painel protegido
-            para gerar chaves, criptografar e descriptografar mensagens.
+            para gerar chave AES-256 e IV para uso pessoal.
           </p>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -144,13 +145,21 @@ export default function HomePage() {
             </div>
             <div className="rounded-xl border border-zinc-300/70 bg-zinc-50/90 p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Etapa 3</p>
-              <p className="mt-1 text-sm font-medium">Painel seguro</p>
+              <p className="mt-1 text-sm font-medium">Chave e IV</p>
             </div>
           </div>
 
-          <p className="mt-6 text-xs text-zinc-500">
-            Backend configurado por ambiente: <span className="font-mono">NEXT_PUBLIC_API_URL</span>
-          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <p className="text-xs text-zinc-500">
+              Backend configurado por ambiente: <span className="font-mono">NEXT_PUBLIC_API_URL</span>
+            </p>
+            <Link
+              href="/faq"
+              className="rounded-lg bg-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-300"
+            >
+              Ver FAQ e formas de uso
+            </Link>
+          </div>
         </article>
 
         <article className="rounded-3xl border border-zinc-300/70 bg-zinc-950 p-6 text-zinc-100 shadow-2xl shadow-zinc-900/20 sm:p-8">
@@ -239,6 +248,13 @@ export default function HomePage() {
 
           <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${noticeStyle(notice.type)}`}>
             {notice.message}
+          </p>
+
+          <p className="mt-3 text-center text-xs text-zinc-400">
+            Precisa de ajuda?{" "}
+            <Link href="/faq" className="font-semibold text-emerald-300 hover:text-emerald-200">
+              Leia o FAQ
+            </Link>
           </p>
         </article>
       </section>
