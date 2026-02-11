@@ -17,7 +17,7 @@ type NoticeType = "info" | "success" | "error";
 
 const highlights = [
   { label: "Seguranca", value: "AES-256-GCM" },
-  { label: "Fluxo", value: "Conta -> Login -> Dashboard" },
+  { label: "Fluxo", value: "Registro -> Login -> Dashboard" },
   { label: "Gestao", value: "Key ID ativo + Nonce unico" },
 ];
 
