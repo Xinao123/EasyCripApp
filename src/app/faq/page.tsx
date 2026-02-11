@@ -112,22 +112,29 @@ const keyConcepts: KeyConcept[] = [
 export default function FaqPage() {
   const [openItem, setOpenItem] = useState<number>(0);
   const [hasSession, setHasSession] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!API_BASE_URL) return () => {};
+    if (!API_BASE_URL) {
+      setHasSession(false);
+      setIsCheckingSession(false);
+      return () => {};
+    }
 
     (async () => {
       try {
         await apiRequest({
-          path: "/api/keys/active",
+          path: "/api/keys/list",
           method: "GET",
           requireAuth: true,
         });
         if (!cancelled) setHasSession(true);
       } catch {
         if (!cancelled) setHasSession(false);
+      } finally {
+        if (!cancelled) setIsCheckingSession(false);
       }
     })();
 
@@ -151,6 +158,14 @@ export default function FaqPage() {
               <Link href="/" className="btn-secondary px-3 py-2 text-sm">
                 Inicio
               </Link>
+              {isCheckingSession && (
+                <span
+                  className="inline-flex items-center rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-500"
+                  aria-live="polite"
+                >
+                  Verificando sessao...
+                </span>
+              )}
               {hasSession && (
                 <Link href="/dashboard" className="btn-primary px-3 py-2 text-sm">
                   Ir para dashboard
@@ -184,6 +199,9 @@ export default function FaqPage() {
                   <button
                     type="button"
                     onClick={() => setOpenItem(open ? -1 : index)}
+                    aria-expanded={open}
+                    aria-controls={`faq-panel-${index}`}
+                    id={`faq-trigger-${index}`}
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                   >
                     <span className="text-sm font-bold text-zinc-900">{item.question}</span>
@@ -192,10 +210,18 @@ export default function FaqPage() {
                         open ? "border-emerald-300 bg-emerald-100 text-emerald-800" : "border-zinc-300 text-zinc-600"
                       }`}
                     >
-                      {open ? "−" : "+"}
+                      {open ? "-" : "+"}
                     </span>
                   </button>
-                  {open && <p className="animate-rise px-4 pb-3 text-sm text-zinc-700">{item.answer}</p>}
+                  {open && (
+                    <div
+                      id={`faq-panel-${index}`}
+                      role="region"
+                      aria-labelledby={`faq-trigger-${index}`}
+                    >
+                      <p className="animate-rise px-4 pb-3 text-sm text-zinc-700">{item.answer}</p>
+                    </div>
+                  )}
                 </article>
               );
             })}
