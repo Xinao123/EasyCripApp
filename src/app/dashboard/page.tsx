@@ -69,7 +69,7 @@ export default function DashboardPage() {
   });
   const [notice, setNotice] = useState<{ type: NoticeType; message: string }>({
     type: "info",
-    message: "Carregando painel...",
+    message: "Carregando seu dashboard...",
   });
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         setActiveKey(key);
         setKeyIdForNonce(key.key_id);
         setKeyValidation({ state: "valid", message: "key_id da chave ativa validado." });
-        setNotice({ type: "info", message: "Chave ativa carregada. Gere um nonce para uso pessoal." });
+        setNotice({ type: "info", message: "Chave ativa carregada. Agora voce pode gerar um nonce com seguranca." });
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Falha ao carregar a chave ativa.";
         if (msg.toLowerCase().includes("sessao expirada")) {
@@ -111,7 +111,7 @@ export default function DashboardPage() {
         setActiveKey(null);
         setNotice({
           type: "info",
-          message: "Nenhuma chave ativa encontrada. Gere uma nova chave para continuar.",
+          message: "Voce ainda nao tem chave ativa. Gere sua primeira chave para continuar.",
         });
       }
     })();
@@ -155,7 +155,7 @@ export default function DashboardPage() {
     if (!key) return;
     setActiveKey(key);
     setKeyIdForNonce(key.key_id);
-    setKeyValidation({ state: "valid", message: "key_id da nova chave ativo e pronto para gerar nonce." });
+    setKeyValidation({ state: "valid", message: "Pronto! key_id da nova chave validado para gerar nonce." });
     setNonceBundle(null);
   }
 
@@ -234,7 +234,7 @@ export default function DashboardPage() {
       };
 
       setNonceBundle(bundle);
-      setNotice({ type: "success", message: "Nonce gerado com sucesso para o key_id selecionado." });
+      setNotice({ type: "success", message: "Nonce gerado com sucesso para o key_id informado." });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Falha ao validar key_id.";
       if (msg.toLowerCase().includes("sessao expirada")) {
@@ -298,7 +298,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Dashboard seguro</p>
-              <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Gerador AES-256 pessoal</h1>
+              <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Seu gerador AES-256 pessoal</h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span
@@ -310,6 +310,9 @@ export default function DashboardPage() {
               </span>
               <Link href="/faq" className="btn-secondary px-3 py-2 text-sm">
                 FAQ
+              </Link>
+              <Link href="/account" className="btn-secondary px-3 py-2 text-sm">
+                Minha conta
               </Link>
               <button onClick={onLogout} className="btn-ghost-dark px-3 py-2 text-sm">
                 Encerrar sessao
@@ -323,7 +326,7 @@ export default function DashboardPage() {
         <section className="grid gap-5 lg:grid-cols-2">
           <article className="section-shell animate-rise p-5 sm:p-6">
             <h2 className="text-lg font-black">Chave ativa</h2>
-            <p className="mt-1 text-sm text-zinc-600">Visualize o key_id atual e controle a rotacao.</p>
+            <p className="mt-1 text-sm text-zinc-600">Veja seu key_id atual e gerencie a rotacao quando precisar.</p>
 
             <div className="panel-soft mt-4 space-y-2 p-3 text-sm text-zinc-700">
               <p>
@@ -359,7 +362,7 @@ export default function DashboardPage() {
           <article className="section-shell animate-rise p-5 sm:p-6" style={{ animationDelay: "80ms" }}>
             <h2 className="text-lg font-black">Gerar nonce com key_id</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Gere nonce (12 bytes, base64) apenas para key_id ativo e use no fluxo AES-GCM.
+              Gere um nonce (12 bytes, base64) apenas para o key_id ativo e use no fluxo AES-GCM.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">

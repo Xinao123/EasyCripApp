@@ -167,9 +167,14 @@ export default function FaqPage() {
                 </span>
               )}
               {hasSession && (
-                <Link href="/dashboard" className="btn-primary px-3 py-2 text-sm">
-                  Ir para dashboard
-                </Link>
+                <>
+                  <Link href="/dashboard" className="btn-primary px-3 py-2 text-sm">
+                    Ir para dashboard
+                  </Link>
+                  <Link href="/account" className="btn-secondary px-3 py-2 text-sm">
+                    Minha conta
+                  </Link>
+                </>
               )}
             </div>
           </div>

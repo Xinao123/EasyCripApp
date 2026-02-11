@@ -1,4 +1,4 @@
-export type HttpMethod = "GET" | "POST";
+export type HttpMethod = "GET" | "POST" | "PUT";
 
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
 export const API_BASE_URL = RAW_API_URL.replace(/\/$/, "");

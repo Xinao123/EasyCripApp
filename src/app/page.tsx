@@ -15,19 +15,20 @@ type LoginResponse = {
 };
 
 type SessionProbe = {
-  key_id: string;
+  keys: unknown[];
+  active_key: unknown | null;
 };
 
 const valuePills = [
-  { title: "Seguranca", text: "AES-256-GCM com nonce unico" },
-  { title: "Fluxo", text: "Cadastro -> Login -> Dashboard" },
-  { title: "Uso real", text: "Geracao de chave e operacao pessoal" },
+  { title: "Seguranca", text: "AES-256-GCM com nonce unico por operacao" },
+  { title: "Fluxo", text: "Cadastro, login e dashboard protegido" },
+  { title: "Uso real", text: "Geracao de chave para uso pessoal" },
 ];
 
 const quickSteps = [
-  "Crie seu usuario com email valido.",
-  "Faca login e acesse o painel protegido.",
-  "Gere sua chave ativa e nonce no dashboard.",
+  "Crie sua conta com um email valido.",
+  "Entre na plataforma com seu login.",
+  "No dashboard, gere sua chave e depois o nonce.",
 ];
 
 function noticeStyle(type: NoticeType) {
@@ -63,7 +64,7 @@ export default function HomePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<{ type: NoticeType; message: string }>({
     type: "info",
-    message: "Crie sua conta ou faca login para continuar.",
+    message: "Crie sua conta para comecar ou entre para continuar de onde parou.",
   });
 
   const strength = useMemo(() => strengthMeta(passwordStrength(password)), [password]);
@@ -78,7 +79,7 @@ export default function HomePage() {
     (async () => {
       try {
         await apiRequest<SessionProbe>({
-          path: "/api/keys/active",
+          path: "/api/keys/list",
           method: "GET",
           requireAuth: true,
         });
@@ -124,7 +125,7 @@ export default function HomePage() {
         method: "POST",
         body: { username, email, password, confirm_password: confirmPassword },
       });
-      setNotice({ type: "success", message: "Cadastro concluido. Agora faca login." });
+      setNotice({ type: "success", message: "Conta criada com sucesso. Agora entre para acessar o dashboard." });
       setMode("login");
       setPassword("");
       setConfirmPassword("");
@@ -153,7 +154,7 @@ export default function HomePage() {
         body: { username, password },
       });
       clearStoredToken();
-      setNotice({ type: "success", message: "Login realizado com sucesso." });
+      setNotice({ type: "success", message: "Login realizado. Redirecionando para o dashboard..." });
       router.push("/dashboard");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha no login.";
