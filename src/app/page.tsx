@@ -40,6 +40,15 @@ const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
   "http://localhost:8000";
 
+function normalizeApiUrl(value: string) {
+  const cleaned = value.trim();
+  return (cleaned || DEFAULT_API_URL).replace(/\/$/, "");
+}
+
+function isAbsoluteHttpUrl(value: string) {
+  return /^https?:\/\//i.test(value);
+}
+
 function pretty(data: unknown) {
   if (typeof data === "string") return data;
   try {
@@ -52,7 +61,9 @@ function pretty(data: unknown) {
 export default function Home() {
   const [apiUrl, setApiUrl] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_API_URL;
-    return window.localStorage.getItem("easycrip_api_url") || DEFAULT_API_URL;
+    const stored = window.localStorage.getItem("easycrip_api_url") || DEFAULT_API_URL;
+    const normalized = normalizeApiUrl(stored);
+    return isAbsoluteHttpUrl(normalized) ? normalized : DEFAULT_API_URL;
   });
   const [token, setToken] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -90,7 +101,7 @@ export default function Home() {
   }, [token]);
 
   useEffect(() => {
-    window.localStorage.setItem("easycrip_api_url", apiUrl);
+    window.localStorage.setItem("easycrip_api_url", normalizeApiUrl(apiUrl));
   }, [apiUrl]);
 
   async function apiRequest<T>(
@@ -99,7 +110,14 @@ export default function Home() {
     body?: unknown,
     requireAuth = false,
   ): Promise<T> {
-    const url = `${apiUrl.replace(/\/$/, "")}${path}`;
+    const baseUrl = normalizeApiUrl(apiUrl);
+    if (!isAbsoluteHttpUrl(baseUrl)) {
+      throw new Error(
+        `API URL inválida: "${apiUrl}". Use URL completa, ex: https://seu-backend.vercel.app`,
+      );
+    }
+
+    const url = `${baseUrl}${path}`;
     setStatus(`Chamando ${method} ${path}...`);
 
     const headers = requireAuth ? authHeaders : { "Content-Type": "application/json" };
@@ -116,6 +134,11 @@ export default function Home() {
       : await response.text();
 
     if (!response.ok) {
+      if (typeof data === "string" && /<!doctype html>|<html/i.test(data)) {
+        throw new Error(
+          `A API retornou HTML em vez de JSON. Verifique API URL (${baseUrl}) e proteção do Vercel no backend.`,
+        );
+      }
       const msg = typeof data === "string" ? data : pretty(data);
       throw new Error(msg);
     }
@@ -240,6 +263,12 @@ export default function Home() {
     setStatus("Token removido.");
   }
 
+  function resetApiUrl() {
+    const normalized = normalizeApiUrl(DEFAULT_API_URL);
+    setApiUrl(normalized);
+    setStatus(`API URL redefinida para ${normalized}`);
+  }
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#fff8ea,_transparent_38%),radial-gradient(circle_at_bottom_right,_#d5f5ec,_transparent_35%),#f3eee1] px-4 py-8 text-zinc-900 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-6xl space-y-4">
@@ -258,6 +287,7 @@ export default function Home() {
               className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-emerald-300 transition focus:ring"
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
+              onBlur={() => setApiUrl(normalizeApiUrl(apiUrl))}
               placeholder="https://seu-backend.vercel.app"
             />
             <button
@@ -271,6 +301,12 @@ export default function Home() {
               className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
             >
               Audit
+            </button>
+            <button
+              onClick={resetApiUrl}
+              className="rounded-lg bg-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-300 sm:col-start-2 sm:justify-self-start"
+            >
+              Reset API URL
             </button>
           </div>
 
