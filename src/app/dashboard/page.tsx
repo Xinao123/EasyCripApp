@@ -12,7 +12,13 @@ type KeyInfo = {
   version: number;
 };
 
+type KeyListResponse = {
+  keys: KeyInfo[];
+  active_key: KeyInfo | null;
+};
+
 type NoticeType = "info" | "success" | "error";
+type KeyValidationState = "idle" | "checking" | "valid" | "invalid";
 
 type IvBundle = {
   key_id: string;
@@ -51,6 +57,13 @@ export default function DashboardPage() {
   const [activeKey, setActiveKey] = useState<KeyInfo | null>(null);
   const [keyIdForIv, setKeyIdForIv] = useState("");
   const [ivBundle, setIvBundle] = useState<IvBundle | null>(null);
+  const [keyValidation, setKeyValidation] = useState<{
+    state: KeyValidationState;
+    message: string;
+  }>({
+    state: "idle",
+    message: "Informe o key_id para validar antes de gerar o IV.",
+  });
 
   const [notice, setNotice] = useState<{ type: NoticeType; message: string }>({
     type: "info",
@@ -87,6 +100,10 @@ export default function DashboardPage() {
 
         setActiveKey(key);
         setKeyIdForIv(key.key_id);
+        setKeyValidation({
+          state: "valid",
+          message: "key_id da chave ativa validado.",
+        });
         setNotice({ type: "info", message: "Chave ativa carregada. Gere um IV para uso pessoal." });
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Falha ao carregar a chave ativa.";
@@ -158,6 +175,10 @@ export default function DashboardPage() {
 
     setActiveKey(key);
     setKeyIdForIv(key.key_id);
+    setKeyValidation({
+      state: "valid",
+      message: "key_id da nova chave ativo e pronto para gerar IV.",
+    });
     setIvBundle(null);
   }
 
@@ -177,27 +198,116 @@ export default function DashboardPage() {
 
     setActiveKey(key);
     setKeyIdForIv(key.key_id);
+    setKeyValidation({
+      state: "valid",
+      message: "key_id da chave ativa validado.",
+    });
   }
 
   function onGenerateIv() {
     const selectedKeyId = keyIdForIv.trim();
     if (!selectedKeyId) {
+      setKeyValidation({
+        state: "invalid",
+        message: "Informe um key_id valido para gerar o IV.",
+      });
       setNotice({ type: "error", message: "Informe um key_id valido para gerar o IV." });
       return;
     }
 
-    const bytes = new Uint8Array(16);
-    crypto.getRandomValues(bytes);
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(selectedKeyId)) {
+      setKeyValidation({
+        state: "invalid",
+        message: "Formato de key_id invalido. Use somente letras, numeros, '_' e '-'.",
+      });
+      setNotice({
+        type: "error",
+        message: "Formato de key_id invalido. Corrija antes de gerar o IV.",
+      });
+      return;
+    }
 
-    const bundle: IvBundle = {
-      key_id: selectedKeyId,
-      iv: toBase64(bytes),
-      algorithm: "AES-256-CBC",
-      generated_at: new Date().toISOString(),
-    };
+    setKeyValidation({ state: "checking", message: "Validando key_id no backend..." });
+    void validateAndGenerateIv(selectedKeyId);
+  }
 
-    setIvBundle(bundle);
-    setNotice({ type: "success", message: "IV gerado com sucesso para o key_id selecionado." });
+  async function validateAndGenerateIv(selectedKeyId: string) {
+    setIsBusy(true);
+    try {
+      const keyList = await apiRequest<KeyListResponse>({
+        path: "/api/keys/list",
+        method: "GET",
+        token,
+        requireAuth: true,
+      });
+
+      const exists = keyList.keys.some((k) => k.key_id === selectedKeyId);
+      if (!exists) {
+        setKeyValidation({
+          state: "invalid",
+          message: "key_id nao encontrado para este usuario.",
+        });
+        setNotice({
+          type: "error",
+          message: "key_id nao encontrado para este usuario.",
+        });
+        return;
+      }
+
+      setKeyValidation({
+        state: "valid",
+        message: "key_id valido e confirmado no backend.",
+      });
+
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+
+      const bundle: IvBundle = {
+        key_id: selectedKeyId,
+        iv: toBase64(bytes),
+        algorithm: "AES-256-CBC",
+        generated_at: new Date().toISOString(),
+      };
+
+      setIvBundle(bundle);
+      setNotice({ type: "success", message: "IV gerado com sucesso para o key_id selecionado." });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao validar key_id.";
+      if (msg.toLowerCase().includes("sessao expirada")) {
+        clearStoredToken();
+        router.replace("/");
+        return;
+      }
+
+      setKeyValidation({
+        state: "invalid",
+        message: "Nao foi possivel validar o key_id no backend.",
+      });
+      setNotice({ type: "error", message: msg });
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  function onKeyIdChange(value: string) {
+    setKeyIdForIv(value);
+    setKeyValidation({
+      state: "idle",
+      message: "Edicao detectada. Clique em Gerar IV para validar novamente.",
+    });
+  }
+
+  function keyValidationClass() {
+    if (keyValidation.state === "valid") {
+      return "border-emerald-300 bg-emerald-50 text-emerald-900";
+    }
+    if (keyValidation.state === "invalid") {
+      return "border-rose-300 bg-rose-50 text-rose-900";
+    }
+    if (keyValidation.state === "checking") {
+      return "border-amber-300 bg-amber-50 text-amber-900";
+    }
+    return "border-zinc-300 bg-zinc-50 text-zinc-700";
   }
 
   async function copyText(value: string, label: string) {
@@ -292,18 +402,23 @@ export default function DashboardPage() {
                 id="key-id"
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-emerald-400 transition focus:ring"
                 value={keyIdForIv}
-                onChange={(e) => setKeyIdForIv(e.target.value)}
+                onChange={(e) => onKeyIdChange(e.target.value)}
                 placeholder="Cole ou use o key_id da chave ativa"
               />
             </div>
 
             <button
               onClick={onGenerateIv}
-              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-900 transition hover:bg-emerald-400"
+              disabled={isBusy || keyValidation.state === "checking"}
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Gerar IV
+              {keyValidation.state === "checking" ? "Validando..." : "Gerar IV"}
             </button>
           </div>
+
+          <p className={`mt-3 rounded-xl border px-3 py-2 text-sm ${keyValidationClass()}`}>
+            {keyValidation.message}
+          </p>
 
           <div className="mt-4 space-y-3">
             <div>
