@@ -131,7 +131,7 @@ export default function HomePage() {
 
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-700 sm:text-base">
             Fluxo de producao simplificado: cadastre o usuario, faca login e acesse um painel protegido
-            para gerar chave AES-256 e IV para uso pessoal.
+            para gerar chave AES-256 e nonce para uso pessoal com AES-GCM.
           </p>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -145,7 +145,7 @@ export default function HomePage() {
             </div>
             <div className="rounded-xl border border-zinc-300/70 bg-zinc-50/90 p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Etapa 3</p>
-              <p className="mt-1 text-sm font-medium">Chave e IV</p>
+              <p className="mt-1 text-sm font-medium">Chave e Nonce</p>
             </div>
           </div>
 

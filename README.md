@@ -4,7 +4,7 @@ Frontend web do projeto EasyCrip, focado em uso pessoal para:
 
 - cadastro e login de usuario
 - geracao de chave AES-256
-- geracao de IV associado ao `key_id` ativo
+- geracao de nonce associado ao `key_id` ativo (AES-GCM)
 - consulta de FAQ e guia rapido de uso
 
 Stack principal:
@@ -22,9 +22,9 @@ Este frontend foi desenhado para fluxo simples e real:
 2. usuario faz login
 3. usuario entra no dashboard protegido
 4. usuario gera chave AES-256
-5. usuario gera IV para o `key_id` ativo
+5. usuario gera nonce para o `key_id` ativo
 
-Nao existe fluxo de "criptografar mensagem" no frontend atual. O foco e geracao de chave/IV e experiencia de uso.
+Nao existe fluxo de "criptografar mensagem" no frontend atual. O foco e geracao de chave/nonce e experiencia de uso.
 
 ## Rotas
 
@@ -35,7 +35,7 @@ Nao existe fluxo de "criptografar mensagem" no frontend atual. O foco e geracao 
   Area protegida por sessao com:
   - dados da chave ativa
   - botao para gerar nova chave AES-256
-  - geracao de IV com validacao de `key_id`
+  - geracao de nonce com validacao de `key_id`
 
 - `/faq`  
   Perguntas frequentes, passo a passo e boas praticas.
@@ -92,15 +92,16 @@ npm run start  # sobe build local
 - chamada ao backend: `POST /api/keys/generate`
 - atualiza chave ativa na tela
 
-### Geracao de IV
+### Geracao de nonce
 
-Antes de gerar IV, o frontend valida:
+Antes de gerar nonce, o frontend valida:
 
 1. formato do `key_id` (caracteres e tamanho)
 2. existencia do `key_id` no backend
 3. se o `key_id` e o ativo atual
 
 Somente `key_id` ativo e aceito.
+O nonce gerado usa 12 bytes (base64), adequado para AES-GCM.
 
 Chamada usada para validacao:
 
@@ -108,10 +109,10 @@ Chamada usada para validacao:
 
 Saida exibida:
 
-- `iv` em base64
+- `nonce` em base64
 - bundle JSON:
   - `key_id`
-  - `iv`
+  - `nonce`
   - `algorithm`
   - `generated_at`
 
@@ -121,7 +122,7 @@ Saida exibida:
 src/
   app/
     page.tsx              # tela de login/registro
-    dashboard/page.tsx    # area protegida (chave e IV)
+    dashboard/page.tsx    # area protegida (chave e nonce)
     faq/page.tsx          # FAQ e guia de uso
     layout.tsx
     globals.css
@@ -139,7 +140,7 @@ src/
    - registro/login
    - acesso ao dashboard
    - geracao de chave
-   - geracao de IV com `key_id` ativo
+   - geracao de nonce com `key_id` ativo
 
 ## Troubleshooting
 
@@ -169,6 +170,5 @@ Frontend pronto para testes reais de produto:
 
 - onboarding (home + FAQ)
 - autenticacao
-- dashboard focado em chave AES-256 + IV
+- dashboard focado em chave AES-256 + nonce (AES-GCM)
 - validacoes de uso para reduzir erro do usuario
-

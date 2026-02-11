@@ -9,7 +9,7 @@ const faqItems: FaqItem[] = [
   {
     question: "O que o EasyCrip faz?",
     answer:
-      "O EasyCrip permite gerar chave AES-256 para uso pessoal e gerar IV vinculado ao key_id ativo.",
+      "O EasyCrip permite gerar chave AES-256 para uso pessoal e gerar nonce vinculado ao key_id ativo.",
   },
   {
     question: "Preciso criar conta para usar?",
@@ -22,14 +22,14 @@ const faqItems: FaqItem[] = [
       "No dashboard, use o botao 'Gerar nova chave AES-256'. A chave ativa fica associada ao seu usuario.",
   },
   {
-    question: "Como gero IV corretamente?",
+    question: "Como gero nonce corretamente?",
     answer:
-      "Informe um key_id e clique em 'Gerar IV'. O sistema valida se o key_id esta ativo antes de liberar o IV.",
+      "Informe um key_id e clique em 'Gerar Nonce'. O sistema valida se o key_id esta ativo antes de liberar o nonce.",
   },
   {
-    question: "Posso reutilizar o mesmo IV?",
+    question: "Posso reutilizar o mesmo nonce?",
     answer:
-      "Nao e recomendado reutilizar IV com a mesma chave. Gere um novo IV para cada operacao.",
+      "Nao e recomendado reutilizar nonce com a mesma chave. Gere um novo nonce para cada operacao AES-GCM.",
   },
   {
     question: "O que fazer se a sessao expirar?",
@@ -43,7 +43,7 @@ const usageSteps = [
   "Faca login e abra o dashboard.",
   "Gere uma nova chave AES-256.",
   "Confirme o key_id ativo.",
-  "Gere um IV para esse key_id.",
+  "Gere um nonce para esse key_id.",
   "Copie o bundle JSON para uso no seu fluxo.",
 ];
 
@@ -114,10 +114,10 @@ export default function FaqPage() {
           <h2 className="text-lg font-bold">Boas praticas rapidas</h2>
           <ul className="mt-3 space-y-2 text-sm text-zinc-700">
             <li className="rounded-xl border border-zinc-300/70 bg-zinc-50/90 px-3 py-2">
-              Sempre use key_id ativo para gerar IV.
+              Sempre use key_id ativo para gerar nonce.
             </li>
             <li className="rounded-xl border border-zinc-300/70 bg-zinc-50/90 px-3 py-2">
-              Gere um novo IV para cada operacao.
+              Gere um novo nonce para cada operacao AES-GCM.
             </li>
             <li className="rounded-xl border border-zinc-300/70 bg-zinc-50/90 px-3 py-2">
               Nao compartilhe token de sessao nem dados sensiveis em canais inseguros.

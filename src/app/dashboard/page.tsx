@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -21,10 +21,10 @@ type KeyListResponse = {
 type NoticeType = "info" | "success" | "error";
 type KeyValidationState = "idle" | "checking" | "valid" | "invalid";
 
-type IvBundle = {
+type NonceBundle = {
   key_id: string;
-  iv: string;
-  algorithm: "AES-256-CBC";
+  nonce: string;
+  algorithm: "AES-256-GCM";
   generated_at: string;
 };
 
@@ -56,14 +56,14 @@ export default function DashboardPage() {
   const [isBusy, setIsBusy] = useState(false);
 
   const [activeKey, setActiveKey] = useState<KeyInfo | null>(null);
-  const [keyIdForIv, setKeyIdForIv] = useState("");
-  const [ivBundle, setIvBundle] = useState<IvBundle | null>(null);
+  const [keyIdForNonce, setKeyIdForNonce] = useState("");
+  const [nonceBundle, setNonceBundle] = useState<NonceBundle | null>(null);
   const [keyValidation, setKeyValidation] = useState<{
     state: KeyValidationState;
     message: string;
   }>({
     state: "idle",
-    message: "Informe o key_id para validar antes de gerar o IV.",
+    message: "Informe o key_id para validar antes de gerar o nonce.",
   });
 
   const [notice, setNotice] = useState<{ type: NoticeType; message: string }>({
@@ -100,12 +100,12 @@ export default function DashboardPage() {
         if (cancelled) return;
 
         setActiveKey(key);
-        setKeyIdForIv(key.key_id);
+        setKeyIdForNonce(key.key_id);
         setKeyValidation({
           state: "valid",
           message: "key_id da chave ativa validado.",
         });
-        setNotice({ type: "info", message: "Chave ativa carregada. Gere um IV para uso pessoal." });
+        setNotice({ type: "info", message: "Chave ativa carregada. Gere um nonce para uso pessoal." });
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Falha ao carregar a chave ativa.";
 
@@ -175,12 +175,12 @@ export default function DashboardPage() {
     if (!key) return;
 
     setActiveKey(key);
-    setKeyIdForIv(key.key_id);
+    setKeyIdForNonce(key.key_id);
     setKeyValidation({
       state: "valid",
-      message: "key_id da nova chave ativo e pronto para gerar IV.",
+      message: "key_id da nova chave ativo e pronto para gerar nonce.",
     });
-    setIvBundle(null);
+    setNonceBundle(null);
   }
 
   async function onRefreshActiveKey() {
@@ -198,21 +198,21 @@ export default function DashboardPage() {
     if (!key) return;
 
     setActiveKey(key);
-    setKeyIdForIv(key.key_id);
+    setKeyIdForNonce(key.key_id);
     setKeyValidation({
       state: "valid",
       message: "key_id da chave ativa validado.",
     });
   }
 
-  function onGenerateIv() {
-    const selectedKeyId = keyIdForIv.trim();
+  function onGenerateNonce() {
+    const selectedKeyId = keyIdForNonce.trim();
     if (!selectedKeyId) {
       setKeyValidation({
         state: "invalid",
-        message: "Informe um key_id valido para gerar o IV.",
+        message: "Informe um key_id valido para gerar o nonce.",
       });
-      setNotice({ type: "error", message: "Informe um key_id valido para gerar o IV." });
+      setNotice({ type: "error", message: "Informe um key_id valido para gerar o nonce." });
       return;
     }
 
@@ -223,16 +223,16 @@ export default function DashboardPage() {
       });
       setNotice({
         type: "error",
-        message: "Formato de key_id invalido. Corrija antes de gerar o IV.",
+        message: "Formato de key_id invalido. Corrija antes de gerar o nonce.",
       });
       return;
     }
 
     setKeyValidation({ state: "checking", message: "Validando key_id no backend..." });
-    void validateAndGenerateIv(selectedKeyId);
+    void validateAndGenerateNonce(selectedKeyId);
   }
 
-  async function validateAndGenerateIv(selectedKeyId: string) {
+  async function validateAndGenerateNonce(selectedKeyId: string) {
     setIsBusy(true);
     try {
       const keyList = await apiRequest<KeyListResponse>({
@@ -260,7 +260,7 @@ export default function DashboardPage() {
       if (!isActiveSelection) {
         setKeyValidation({
           state: "invalid",
-          message: "Somente key_id ativo e aceito para gerar IV.",
+          message: "Somente key_id ativo e aceito para gerar nonce.",
         });
         setNotice({
           type: "error",
@@ -274,18 +274,18 @@ export default function DashboardPage() {
         message: "key_id ativo validado no backend.",
       });
 
-      const bytes = new Uint8Array(16);
+      const bytes = new Uint8Array(12);
       crypto.getRandomValues(bytes);
 
-      const bundle: IvBundle = {
+      const bundle: NonceBundle = {
         key_id: selectedKeyId,
-        iv: toBase64(bytes),
-        algorithm: "AES-256-CBC",
+        nonce: toBase64(bytes),
+        algorithm: "AES-256-GCM",
         generated_at: new Date().toISOString(),
       };
 
-      setIvBundle(bundle);
-      setNotice({ type: "success", message: "IV gerado com sucesso para o key_id selecionado." });
+      setNonceBundle(bundle);
+      setNotice({ type: "success", message: "Nonce gerado com sucesso para o key_id selecionado." });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Falha ao validar key_id.";
       if (msg.toLowerCase().includes("sessao expirada")) {
@@ -305,10 +305,10 @@ export default function DashboardPage() {
   }
 
   function onKeyIdChange(value: string) {
-    setKeyIdForIv(value);
+    setKeyIdForNonce(value);
     setKeyValidation({
       state: "idle",
-      message: "Edicao detectada. Clique em Gerar IV para validar novamente.",
+      message: "Edicao detectada. Clique em Gerar Nonce para validar novamente.",
     });
   }
 
@@ -411,9 +411,9 @@ export default function DashboardPage() {
         </section>
 
         <section className="rounded-3xl border border-zinc-300/75 bg-white/80 p-5 shadow-lg shadow-zinc-900/5 backdrop-blur sm:p-6">
-          <h2 className="text-lg font-bold">Gerar IV com key_id</h2>
+          <h2 className="text-lg font-bold">Gerar Nonce com key_id</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Gere um IV aleatorio (16 bytes, base64) associado ao seu key_id para uso nas operacoes AES-256-CBC.
+            Gere um nonce aleatorio (12 bytes, base64) associado ao seu key_id para uso nas operacoes AES-256-GCM.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -424,18 +424,18 @@ export default function DashboardPage() {
               <input
                 id="key-id"
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-emerald-400 transition focus:ring"
-                value={keyIdForIv}
+                value={keyIdForNonce}
                 onChange={(e) => onKeyIdChange(e.target.value)}
                 placeholder="Cole ou use o key_id da chave ativa"
               />
             </div>
 
             <button
-              onClick={onGenerateIv}
+              onClick={onGenerateNonce}
               disabled={isBusy || keyValidation.state === "checking"}
               className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {keyValidation.state === "checking" ? "Validando..." : "Gerar IV"}
+              {keyValidation.state === "checking" ? "Validando..." : "Gerar Nonce"}
             </button>
           </div>
 
@@ -445,12 +445,12 @@ export default function DashboardPage() {
 
           <div className="mt-4 space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">iv (base64)</label>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">nonce (base64)</label>
               <input
                 className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-xs outline-none"
-                value={ivBundle?.iv ?? ""}
+                value={nonceBundle?.nonce ?? ""}
                 readOnly
-                placeholder="IV gerado aparecera aqui"
+                placeholder="Nonce gerado aparecera aqui"
               />
             </div>
 
@@ -460,26 +460,26 @@ export default function DashboardPage() {
                 className="min-h-28 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-xs outline-none"
                 readOnly
                 value={
-                  ivBundle
-                    ? JSON.stringify(ivBundle, null, 2)
+                  nonceBundle
+                    ? JSON.stringify(nonceBundle, null, 2)
                     : ""
                 }
-                placeholder="Bundle key_id + iv"
+                placeholder="Bundle key_id + nonce"
               />
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button
-              onClick={() => copyText(ivBundle?.iv ?? "", "IV")}
-              disabled={!ivBundle?.iv}
+              onClick={() => copyText(nonceBundle?.nonce ?? "", "Nonce")}
+              disabled={!nonceBundle?.nonce}
               className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Copiar IV
+              Copiar Nonce
             </button>
             <button
-              onClick={() => copyText(ivBundle ? JSON.stringify(ivBundle) : "", "Bundle")}
-              disabled={!ivBundle}
+              onClick={() => copyText(nonceBundle ? JSON.stringify(nonceBundle) : "", "Bundle")}
+              disabled={!nonceBundle}
               className="rounded-lg bg-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Copiar bundle JSON
@@ -487,10 +487,11 @@ export default function DashboardPage() {
           </div>
 
           <p className="mt-4 text-xs text-zinc-500">
-            Boa pratica: nao reutilize o mesmo IV com o mesmo key_id em multiplas operacoes.
+            Boa pratica: nao reutilize o mesmo nonce com o mesmo key_id em multiplas operacoes AES-GCM.
           </p>
         </section>
       </section>
     </main>
   );
 }
+
