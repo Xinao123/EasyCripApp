@@ -62,6 +62,13 @@ function toBase64(bytes: Uint8Array) {
   return btoa(binary);
 }
 
+function formatBrazilDateTime(value: string) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -693,7 +700,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-zinc-600">Token (uso unico):</p>
                     <p className="mt-1 break-all font-mono text-xs text-zinc-900">{generatedShareToken}</p>
                     <p className="mt-1 text-xs text-zinc-600">
-                      Expira em: {generatedShareTokenExpiresAt ? new Date(generatedShareTokenExpiresAt).toLocaleString() : "-"}
+                      Expira em: {formatBrazilDateTime(generatedShareTokenExpiresAt)} (horario de Brasilia)
                     </p>
                     <button
                       onClick={() => copyText(generatedShareToken, "Token de compartilhamento")}
