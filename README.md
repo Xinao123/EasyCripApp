@@ -8,6 +8,9 @@ Frontend web do projeto EasyCrip para uso pessoal com chaves AES-256.
 - sessao autenticada por cookie HttpOnly
 - geracao de chave AES-256 por usuario
 - geracao de nonce (12 bytes, base64) para uso com AES-GCM
+- gestao de conta (editar username/email)
+- troca de senha com revogacao de sessoes
+- encerramento de sessoes em todos os dispositivos
 - FAQ com guia rapido de uso
 
 O frontend nao executa criptografia local de mensagem. O foco atual e gerenciamento de chave ativa + nonce.
@@ -25,6 +28,11 @@ O frontend nao executa criptografia local de mensagem. O foco atual e gerenciame
   - tela inicial com abas de registro/login
 - `/dashboard`
   - area protegida para gerar chave e nonce
+- `/account`
+  - pagina de conta para:
+    - atualizar username/email
+    - trocar senha
+    - encerrar todas as sessoes ativas
 - `/faq`
   - perguntas frequentes e exemplos de uso
 
@@ -35,9 +43,23 @@ O frontend nao executa criptografia local de mensagem. O foco atual e gerenciame
 - frontend usa `fetch(..., { credentials: "include" })`
 - logout chama `POST /api/auth/logout`
 - nao existe dependencia de token em `localStorage`
+- sessao atual pode ser validada via `GET /api/auth/me`
+- existe logout global via `POST /api/auth/logout-all`
 
 Observacao:
 - ainda existe uma limpeza defensiva de chave antiga em `localStorage` para compatibilidade de versoes anteriores.
+
+## Endpoints de conta usados pelo frontend
+
+- `GET /api/auth/me`
+  - dados basicos da conta logada
+- `PUT /api/auth/profile`
+  - atualiza username e/ou email
+- `POST /api/auth/change-password`
+  - troca senha atual por nova senha forte
+  - revoga tokens e exige novo login
+- `POST /api/auth/logout-all`
+  - revoga todas as sessoes do usuario
 
 ## Regras de negocio do dashboard
 
@@ -67,6 +89,8 @@ Para este frontend funcionar com seguranca em producao:
   - `AUTH_COOKIE_SECURE=true`
   - `AUTH_COOKIE_SAMESITE=none` (quando front e api em subdominios)
 - CORS restrito ao dominio real do frontend
+- troca de senha deve revogar sessoes existentes
+- endpoints de conta devem exigir autenticacao
 
 ## Variaveis de ambiente
 
@@ -108,6 +132,7 @@ src/
   app/
     page.tsx              # login/registro
     dashboard/page.tsx    # area protegida (chave e nonce)
+    account/page.tsx      # perfil, senha e sessoes
     faq/page.tsx          # FAQ e guia de uso
     layout.tsx
     globals.css
@@ -125,6 +150,7 @@ src/
    - registro
    - login
    - dashboard
+   - minha conta (profile/senha/logout-all)
    - gerar chave
    - gerar nonce
    - logout
@@ -162,4 +188,5 @@ Frontend pronto para testes reais com foco em:
 - onboarding simples
 - autenticacao por cookie HttpOnly
 - dashboard de chave AES-256 + nonce
+- pagina de conta com controles de seguranca
 - validacoes de uso para reduzir erro operacional

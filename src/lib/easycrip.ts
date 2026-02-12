@@ -18,7 +18,6 @@ type ApiRequestOptions = {
   path: string;
   method: HttpMethod;
   body?: unknown;
-  token?: string;
   requireAuth?: boolean;
 };
 
@@ -39,7 +38,6 @@ export async function apiRequest<T>({
   path,
   method,
   body,
-  token,
   requireAuth = false,
 }: ApiRequestOptions): Promise<T> {
   if (!API_BASE_URL) {
@@ -55,10 +53,6 @@ export async function apiRequest<T>({
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-
-  if (requireAuth && token?.trim()) {
-    headers.Authorization = `Bearer ${token.trim()}`;
-  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
@@ -77,7 +71,7 @@ export async function apiRequest<T>({
       throw new Error("Backend retornou HTML em vez de JSON. Verifique o deploy da API.");
     }
 
-    if (response.status === 401) {
+    if (response.status === 401 && requireAuth) {
       throw new Error("Sessao expirada. Faca login novamente.");
     }
 
