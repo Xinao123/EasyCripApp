@@ -28,6 +28,13 @@ function extractErrorMessage(payload: unknown, status: number): string {
     const data = payload as Record<string, unknown>;
     const detail = data.detail;
     if (typeof detail === "string") return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0];
+      if (first && typeof first === "object") {
+        const firstObj = first as Record<string, unknown>;
+        if (typeof firstObj.msg === "string") return firstObj.msg;
+      }
+    }
     if (typeof data.message === "string") return data.message;
   }
 
