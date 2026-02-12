@@ -347,8 +347,9 @@ export default function DashboardPage() {
         requireAuth: true,
       });
 
-      const defaultName = fileToDecrypt.name.endsWith(".easycrip")
-        ? fileToDecrypt.name.slice(0, -8)
+      const encryptedExtension = ".easycrip";
+      const defaultName = fileToDecrypt.name.endsWith(encryptedExtension)
+        ? fileToDecrypt.name.slice(0, -encryptedExtension.length)
         : `decrypted-${fileToDecrypt.name}`;
       triggerDownload(result.blob, result.filename || defaultName || "arquivo.bin");
       setNotice({ type: "success", message: "Arquivo descriptografado com sucesso. Download iniciado." });
