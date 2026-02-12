@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiRequest, clearStoredToken } from "@/lib/easycrip";
+import { apiFileRequest, apiRequest, clearStoredToken } from "@/lib/easycrip";
 
 type KeyInfo = {
   key_id: string;
@@ -60,8 +60,12 @@ export default function DashboardPage() {
 
   const [isHydrated, setIsHydrated] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [isFileBusy, setIsFileBusy] = useState(false);
   const [activeKey, setActiveKey] = useState<KeyInfo | null>(null);
   const [keyIdForNonce, setKeyIdForNonce] = useState("");
+  const [fileKeyId, setFileKeyId] = useState("");
+  const [fileToEncrypt, setFileToEncrypt] = useState<File | null>(null);
+  const [fileToDecrypt, setFileToDecrypt] = useState<File | null>(null);
   const [nonceBundle, setNonceBundle] = useState<NonceBundle | null>(null);
   const [keyValidation, setKeyValidation] = useState<{ state: KeyValidationState; message: string }>({
     state: "idle",
@@ -97,6 +101,7 @@ export default function DashboardPage() {
 
         setActiveKey(key);
         setKeyIdForNonce(key.key_id);
+        setFileKeyId(key.key_id);
         setKeyValidation({ state: "valid", message: "key_id da chave ativa validado." });
         setNotice({ type: "info", message: "Chave ativa carregada. Agora voce pode gerar um nonce com seguranca." });
       } catch (error) {
@@ -155,6 +160,7 @@ export default function DashboardPage() {
     if (!key) return;
     setActiveKey(key);
     setKeyIdForNonce(key.key_id);
+    setFileKeyId(key.key_id);
     setKeyValidation({ state: "valid", message: "Pronto! key_id da nova chave validado para gerar nonce." });
     setNonceBundle(null);
   }
@@ -173,6 +179,7 @@ export default function DashboardPage() {
     if (!key) return;
     setActiveKey(key);
     setKeyIdForNonce(key.key_id);
+    setFileKeyId(key.key_id);
     setKeyValidation({ state: "valid", message: "key_id da chave ativa validado." });
   }
 
@@ -261,6 +268,100 @@ export default function DashboardPage() {
       setNotice({ type: "success", message: `${label} copiado.` });
     } catch {
       setNotice({ type: "error", message: `Nao foi possivel copiar ${label.toLowerCase()}.` });
+    }
+  }
+
+  function triggerDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function onEncryptFile() {
+    if (!fileToEncrypt) {
+      setNotice({ type: "error", message: "Selecione um arquivo para criptografar." });
+      return;
+    }
+
+    const selectedKeyId = fileKeyId.trim();
+    if (!selectedKeyId) {
+      setNotice({ type: "error", message: "Informe um key_id para criptografar arquivo." });
+      return;
+    }
+
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(selectedKeyId)) {
+      setNotice({ type: "error", message: "Formato de key_id invalido para criptografia de arquivo." });
+      return;
+    }
+
+    setIsFileBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", fileToEncrypt);
+      formData.append("key_id", selectedKeyId);
+
+      const result = await apiFileRequest({
+        path: "/api/files/encrypt",
+        method: "POST",
+        formData,
+        requireAuth: true,
+      });
+
+      const outputName = result.filename || `${fileToEncrypt.name}.easycrip`;
+      triggerDownload(result.blob, outputName);
+      setNotice({ type: "success", message: "Arquivo criptografado com sucesso. Download iniciado." });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao criptografar arquivo.";
+      if (msg.toLowerCase().includes("sessao expirada")) {
+        clearStoredToken();
+        router.replace("/");
+        return;
+      }
+      setNotice({ type: "error", message: msg });
+    } finally {
+      setIsFileBusy(false);
+    }
+  }
+
+  async function onDecryptFile() {
+    if (!fileToDecrypt) {
+      setNotice({ type: "error", message: "Selecione um arquivo .easycrip para descriptografar." });
+      return;
+    }
+
+    setIsFileBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", fileToDecrypt);
+      if (fileKeyId.trim()) formData.append("key_id", fileKeyId.trim());
+
+      const result = await apiFileRequest({
+        path: "/api/files/decrypt",
+        method: "POST",
+        formData,
+        requireAuth: true,
+      });
+
+      const defaultName = fileToDecrypt.name.endsWith(".easycrip")
+        ? fileToDecrypt.name.slice(0, -8)
+        : `decrypted-${fileToDecrypt.name}`;
+      triggerDownload(result.blob, result.filename || defaultName || "arquivo.bin");
+      setNotice({ type: "success", message: "Arquivo descriptografado com sucesso. Download iniciado." });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao descriptografar arquivo.";
+      if (msg.toLowerCase().includes("sessao expirada")) {
+        clearStoredToken();
+        router.replace("/");
+        return;
+      }
+      setNotice({ type: "error", message: msg });
+    } finally {
+      setIsFileBusy(false);
     }
   }
 
@@ -438,6 +539,80 @@ export default function DashboardPage() {
             >
               Copiar bundle JSON
             </button>
+          </div>
+        </section>
+
+        <section className="section-shell animate-rise p-5 sm:p-6" style={{ animationDelay: "170ms" }}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-black">Exemplo pratico: criptografar arquivo</h2>
+            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-700">MVP ate 5MB</span>
+          </div>
+
+          <p className="mt-2 text-sm text-zinc-600">
+            Selecione seu arquivo, use um key_id ativo e teste o fluxo real de criptografia/descriptografia para uso
+            pessoal.
+          </p>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <article className="panel-soft p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.12em] text-zinc-700">Criptografar</h3>
+
+              <label className="mt-3 grid gap-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Arquivo</span>
+                <input
+                  type="file"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-[var(--ring)] transition focus:ring-4"
+                  onChange={(e) => setFileToEncrypt(e.target.files?.[0] ?? null)}
+                />
+              </label>
+
+              <label className="mt-3 grid gap-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">key_id</span>
+                <input
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-[var(--ring)] transition focus:ring-4"
+                  value={fileKeyId}
+                  onChange={(e) => setFileKeyId(e.target.value)}
+                  placeholder="Use sua chave ativa"
+                />
+              </label>
+
+              <p className="mt-2 text-xs text-zinc-500">
+                Arquivo selecionado: {fileToEncrypt ? fileToEncrypt.name : "nenhum"}
+              </p>
+
+              <button
+                onClick={onEncryptFile}
+                disabled={isBusy || isFileBusy}
+                className="btn-primary mt-3 px-4 py-2 text-sm disabled:opacity-60"
+              >
+                {isFileBusy ? "Processando..." : "Criptografar e baixar"}
+              </button>
+            </article>
+
+            <article className="panel-soft p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.12em] text-zinc-700">Descriptografar</h3>
+
+              <label className="mt-3 grid gap-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Arquivo .easycrip</span>
+                <input
+                  type="file"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-[var(--ring)] transition focus:ring-4"
+                  onChange={(e) => setFileToDecrypt(e.target.files?.[0] ?? null)}
+                />
+              </label>
+
+              <p className="mt-2 text-xs text-zinc-500">
+                Arquivo selecionado: {fileToDecrypt ? fileToDecrypt.name : "nenhum"}
+              </p>
+
+              <button
+                onClick={onDecryptFile}
+                disabled={isBusy || isFileBusy}
+                className="btn-secondary mt-3 px-4 py-2 text-sm disabled:opacity-60"
+              >
+                {isFileBusy ? "Processando..." : "Descriptografar e baixar"}
+              </button>
+            </article>
           </div>
         </section>
       </section>
