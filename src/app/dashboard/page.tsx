@@ -28,6 +28,13 @@ type NonceBundle = {
   generated_at: string;
 };
 
+type FileShareTokenResponse = {
+  share_token: string;
+  key_id: string;
+  expires_at: string;
+  one_time: boolean;
+};
+
 function noticeStyle(type: NoticeType) {
   if (type === "success") return "border-emerald-300 bg-emerald-50 text-emerald-900";
   if (type === "error") return "border-rose-300 bg-rose-50 text-rose-900";
@@ -66,6 +73,10 @@ export default function DashboardPage() {
   const [fileKeyId, setFileKeyId] = useState("");
   const [fileToEncrypt, setFileToEncrypt] = useState<File | null>(null);
   const [fileToDecrypt, setFileToDecrypt] = useState<File | null>(null);
+  const [shareTokenTtlMinutes, setShareTokenTtlMinutes] = useState("15");
+  const [generatedShareToken, setGeneratedShareToken] = useState("");
+  const [generatedShareTokenExpiresAt, setGeneratedShareTokenExpiresAt] = useState("");
+  const [decryptShareToken, setDecryptShareToken] = useState("");
   const [nonceBundle, setNonceBundle] = useState<NonceBundle | null>(null);
   const [keyValidation, setKeyValidation] = useState<{ state: KeyValidationState; message: string }>({
     state: "idle",
@@ -328,6 +339,53 @@ export default function DashboardPage() {
     }
   }
 
+  async function onCreateShareToken() {
+    const selectedKeyId = fileKeyId.trim();
+    if (!selectedKeyId) {
+      setNotice({ type: "error", message: "Informe um key_id para gerar token de compartilhamento." });
+      return;
+    }
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(selectedKeyId)) {
+      setNotice({ type: "error", message: "Formato de key_id invalido para token de compartilhamento." });
+      return;
+    }
+
+    const ttl = Number(shareTokenTtlMinutes);
+    if (!Number.isFinite(ttl) || ttl < 1) {
+      setNotice({ type: "error", message: "Informe um TTL valido (minutos)." });
+      return;
+    }
+
+    setIsFileBusy(true);
+    try {
+      const result = await apiRequest<FileShareTokenResponse>({
+        path: "/api/files/share-token",
+        method: "POST",
+        body: {
+          key_id: selectedKeyId,
+          expires_in_minutes: ttl,
+        },
+        requireAuth: true,
+      });
+      setGeneratedShareToken(result.share_token);
+      setGeneratedShareTokenExpiresAt(result.expires_at);
+      setNotice({
+        type: "success",
+        message: "Token de compartilhamento gerado. Envie token + arquivo .easycrip ao destinatario.",
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Falha ao gerar token de compartilhamento.";
+      if (msg.toLowerCase().includes("sessao expirada")) {
+        clearStoredToken();
+        router.replace("/");
+        return;
+      }
+      setNotice({ type: "error", message: msg });
+    } finally {
+      setIsFileBusy(false);
+    }
+  }
+
   async function onDecryptFile() {
     if (!fileToDecrypt) {
       setNotice({ type: "error", message: "Selecione um arquivo .easycrip para descriptografar." });
@@ -338,14 +396,27 @@ export default function DashboardPage() {
     try {
       const formData = new FormData();
       formData.append("file", fileToDecrypt);
-      if (fileKeyId.trim()) formData.append("key_id", fileKeyId.trim());
-
-      const result = await apiFileRequest({
-        path: "/api/files/decrypt",
-        method: "POST",
-        formData,
-        requireAuth: true,
-      });
+      const sharedToken = decryptShareToken.trim();
+      const result = sharedToken
+        ? await (async () => {
+        formData.append("share_token", sharedToken);
+        return apiFileRequest({
+          path: "/api/files/decrypt-shared",
+          method: "POST",
+          formData,
+          requireAuth: false,
+        });
+      })()
+        : await (async () => {
+        const localKeyId = fileKeyId.trim();
+        if (localKeyId) formData.append("key_id", localKeyId);
+        return apiFileRequest({
+          path: "/api/files/decrypt",
+          method: "POST",
+          formData,
+          requireAuth: true,
+        });
+      })();
 
       const encryptedExtension = ".easycrip";
       const defaultName = fileToDecrypt.name.endsWith(encryptedExtension)
@@ -581,13 +652,58 @@ export default function DashboardPage() {
                 Arquivo selecionado: {fileToEncrypt ? fileToEncrypt.name : "nenhum"}
               </p>
 
-              <button
-                onClick={onEncryptFile}
-                disabled={isBusy || isFileBusy}
-                className="btn-primary mt-3 px-4 py-2 text-sm disabled:opacity-60"
-              >
-                {isFileBusy ? "Processando..." : "Criptografar e baixar"}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={onEncryptFile}
+                  disabled={isBusy || isFileBusy}
+                  className="btn-primary px-4 py-2 text-sm disabled:opacity-60"
+                >
+                  {isFileBusy ? "Processando..." : "Criptografar e baixar"}
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Compartilhar de forma segura</p>
+                <p className="mt-1 text-xs text-zinc-600">
+                  Gere um token temporario (uso unico) para outra pessoa descriptografar este arquivo.
+                </p>
+
+                <label className="mt-2 grid gap-1">
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">TTL (minutos)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-[var(--ring)] transition focus:ring-4"
+                    value={shareTokenTtlMinutes}
+                    onChange={(e) => setShareTokenTtlMinutes(e.target.value)}
+                  />
+                </label>
+
+                <button
+                  onClick={onCreateShareToken}
+                  disabled={isBusy || isFileBusy}
+                  className="btn-secondary mt-3 px-4 py-2 text-sm disabled:opacity-60"
+                >
+                  {isFileBusy ? "Processando..." : "Gerar token de compartilhamento"}
+                </button>
+
+                {generatedShareToken ? (
+                  <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                    <p className="text-xs text-zinc-600">Token (uso unico):</p>
+                    <p className="mt-1 break-all font-mono text-xs text-zinc-900">{generatedShareToken}</p>
+                    <p className="mt-1 text-xs text-zinc-600">
+                      Expira em: {generatedShareTokenExpiresAt ? new Date(generatedShareTokenExpiresAt).toLocaleString() : "-"}
+                    </p>
+                    <button
+                      onClick={() => copyText(generatedShareToken, "Token de compartilhamento")}
+                      className="btn-secondary mt-2 px-3 py-1.5 text-xs"
+                    >
+                      Copiar token
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </article>
 
             <article className="panel-soft p-4">
@@ -605,6 +721,18 @@ export default function DashboardPage() {
               <p className="mt-2 text-xs text-zinc-500">
                 Arquivo selecionado: {fileToDecrypt ? fileToDecrypt.name : "nenhum"}
               </p>
+
+              <label className="mt-3 grid gap-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                  Token de compartilhamento (opcional)
+                </span>
+                <input
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-xs outline-none ring-[var(--ring)] transition focus:ring-4"
+                  value={decryptShareToken}
+                  onChange={(e) => setDecryptShareToken(e.target.value)}
+                  placeholder="Cole aqui para descriptografar arquivo recebido de outro usuario"
+                />
+              </label>
 
               <button
                 onClick={onDecryptFile}
