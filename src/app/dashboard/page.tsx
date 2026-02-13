@@ -289,22 +289,29 @@ export default function DashboardPage() {
     }
   }
 
-  function triggerDownload(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = sanitizeDownloadFilename(filename);
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
-  async function onEncryptFile() {
-    if (!fileToEncrypt) {
-      setNotice({ type: "error", message: "Selecione um arquivo para criptografar." });
-      return;
-    }
+function sanitizeDownloadFilename(value: string) {
+  const trimmed = (value || "").trim();
+  const replaced = trimmed.replace(/[\\/:*?"<>|\u0000-\u001F]/g, "_").replace(/\s+/g, " ").trim();
+  const safe = replaced || "download.bin";
+  return safe.length > 180 ? safe.slice(0, 180) : safe;
+}
+
+async function onEncryptFile() {
+  if (!fileToEncrypt) {
+    setNotice({ type: "error", message: "Selecione um arquivo para criptografar." });
+    return;
+  }
 
     const selectedKeyId = fileKeyId.trim();
     if (!selectedKeyId) {
