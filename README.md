@@ -1,192 +1,113 @@
 ﻿# EasyCripApp (Frontend)
 
-Frontend web do projeto EasyCrip para uso pessoal com chaves AES-256.
+Interface web do EasyCrip para gerenciamento de chave AES-256 por usuario e teste pratico de criptografia de arquivos.
 
-## O que o app faz
+## Visao do produto
 
-- cadastro e login de usuario
-- sessao autenticada por cookie HttpOnly
-- geracao de chave AES-256 por usuario
-- geracao de nonce (12 bytes, base64) para uso com AES-GCM
-- gestao de conta (editar username/email)
-- troca de senha com revogacao de sessoes
-- encerramento de sessoes em todos os dispositivos
-- FAQ com guia rapido de uso
+O frontend foi desenhado para um fluxo simples:
 
-O frontend nao executa criptografia local de mensagem. O foco atual e gerenciamento de chave ativa + nonce.
+1. usuario cria conta e faz login
+2. gera uma chave AES-256 ativa no dashboard
+3. gera nonce para uso com AES-GCM
+4. criptografa/descriptografa arquivo para validar o uso da chave
+5. opcionalmente gera token temporario de compartilhamento (uso unico) para terceiro descriptografar
 
-## Stack
+O app nao expoe segredo de sessao no browser e usa cookie HttpOnly controlado pelo backend.
 
-- Next.js 16 (App Router)
-- React 19
-- TypeScript
-- Tailwind CSS 4
+## Como o sistema funciona
 
-## Rotas
+### Camada de UI
 
-- `/`
-  - tela inicial com abas de registro/login
-- `/dashboard`
-  - area protegida para gerar chave e nonce
-- `/account`
-  - pagina de conta para:
-    - atualizar username/email
-    - trocar senha
-    - encerrar todas as sessoes ativas
-- `/faq`
-  - perguntas frequentes e exemplos de uso
+- `src/app/page.tsx`: entrada de registro/login
+- `src/app/dashboard/page.tsx`: operacao principal (chaves, nonce, arquivos e compartilhamento)
+- `src/app/account/page.tsx`: perfil, senha e sessao
+- `src/app/faq/page.tsx`: guia de uso
 
-## Fluxo de autenticacao
+### Camada de API client
 
-- login chama `POST /api/auth/login`
-- backend seta cookie HttpOnly de sessao
-- frontend usa `fetch(..., { credentials: "include" })`
-- logout chama `POST /api/auth/logout`
-- nao existe dependencia de token em `localStorage`
-- sessao atual pode ser validada via `GET /api/auth/me`
-- existe logout global via `POST /api/auth/logout-all`
+- `src/lib/easycrip.ts` centraliza chamadas HTTP
+- valida `NEXT_PUBLIC_API_URL`
+- usa `fetch(..., { credentials: "include" })` para enviar cookie de sessao
+- trata erros de autenticacao de forma padronizada
 
-Observacao:
-- ainda existe uma limpeza defensiva de chave antiga em `localStorage` para compatibilidade de versoes anteriores.
+### Seguranca no frontend
 
-## Endpoints de conta usados pelo frontend
+- sem uso de token bearer em `localStorage`
+- sem segredo no bundle (apenas `NEXT_PUBLIC_API_URL`)
+- headers de seguranca configurados no Next (`next.config.ts`)
+- sanitizacao de nome de arquivo no download local (UX + hardening)
 
-- `GET /api/auth/me`
-  - dados basicos da conta logada
-- `PUT /api/auth/profile`
-  - atualiza username e/ou email
-- `POST /api/auth/change-password`
-  - troca senha atual por nova senha forte
-  - revoga tokens e exige novo login
-- `POST /api/auth/logout-all`
-  - revoga todas as sessoes do usuario
+## Fluxos principais
 
-## Regras de negocio do dashboard
+### 1) Autenticacao
 
-### Geracao de chave
+- registro: `POST /api/auth/register`
+- login: `POST /api/auth/login`
+- logout: `POST /api/auth/logout`
+- logout global: `POST /api/auth/logout-all`
+- sessao atual: `GET /api/auth/me`
 
-- endpoint: `POST /api/keys/generate`
-- gera nova chave ativa para o usuario logado
-- chave ativa anterior do mesmo usuario e desativada
+### 2) Chaves e nonce
 
-### Geracao de nonce
+- gerar chave: `POST /api/keys/generate`
+- chave ativa: `GET /api/keys/active`
+- lista de chaves: `GET /api/keys/list`
 
-Antes de gerar nonce, o frontend valida:
+Antes de gerar nonce, a UI valida:
+- formato do `key_id`
+- se o `key_id` pertence ao usuario
+- se o `key_id` esta ativo
 
-1. formato do `key_id`
-2. se o `key_id` existe na lista do usuario
-3. se o `key_id` e o ativo atual
+### 3) Arquivos (teste pratico)
 
-Somente `key_id` ativo e aceito para o fluxo de nonce exibido na UI.
+- criptografar arquivo: `POST /api/files/encrypt`
+- descriptografar arquivo (dono): `POST /api/files/decrypt`
+- gerar token compartilhado: `POST /api/files/share-token`
+- descriptografar com token compartilhado: `POST /api/files/decrypt-shared`
 
-## Seguranca esperada no backend (importante)
+Regras de UX aplicadas:
+- limite exibido no frontend (MVP ate 5MB)
+- fluxo de compartilhamento explicito (arquivo `.easycrip` + token temporario)
+- nomes de download tratados para evitar caracteres invalidos
 
-Para este frontend funcionar com seguranca em producao:
+## Contrato esperado do backend
 
-- isolamento por usuario em chaves (`/api/keys/*`)
-- isolamento por usuario em auditoria (`/api/audit`)
-- cookie com:
-  - `AUTH_COOKIE_SECURE=true`
-  - `AUTH_COOKIE_SAMESITE=none` (quando front e api em subdominios)
+Para o frontend operar corretamente em producao:
+
+- isolamento por usuario em rotas de chave/auditoria/conta
+- cookie de sessao com `HttpOnly`, `Secure` e `SameSite` corretos
 - CORS restrito ao dominio real do frontend
-- troca de senha deve revogar sessoes existentes
-- endpoints de conta devem exigir autenticacao
+- CSRF habilitado para operacoes com cookie
+- revogacao de sessoes em troca de senha e logout global
 
-## Variaveis de ambiente
+## Configuracao minima
 
-Crie `.env.local` com base em `.env.example`:
+Arquivo `.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=https://seu-backend.vercel.app
 ```
 
-Regras:
+Regra: URL completa com `https://`.
 
-- usar URL completa com `https://`
-- sem barra final (o app ja normaliza, mas mantenha padrao)
-
-## Instalacao e execucao local
+## Rodar local (resumo)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abrir:
+App local: `http://localhost:3000`
 
-- `http://localhost:3000`
+## Deploy (resumo)
 
-## Scripts
+1. subir projeto no Vercel
+2. configurar `NEXT_PUBLIC_API_URL`
+3. validar fluxos: auth, dashboard, conta, arquivos e compartilhamento
 
-```bash
-npm run dev    # desenvolvimento
-npm run lint   # validacao eslint
-npm run build  # build de producao
-npm run start  # sobe build local
-```
+## Troubleshooting rapido
 
-## Estrutura (resumo)
-
-```txt
-src/
-  app/
-    page.tsx              # login/registro
-    dashboard/page.tsx    # area protegida (chave e nonce)
-    account/page.tsx      # perfil, senha e sessoes
-    faq/page.tsx          # FAQ e guia de uso
-    layout.tsx
-    globals.css
-  lib/
-    easycrip.ts           # cliente HTTP e helpers
-```
-
-## Deploy no Vercel
-
-1. importar repo do frontend
-2. definir env:
-   - `NEXT_PUBLIC_API_URL=https://api.seudominio.com`
-3. deploy
-4. validar fluxos:
-   - registro
-   - login
-   - dashboard
-   - minha conta (profile/senha/logout-all)
-   - gerar chave
-   - gerar nonce
-   - logout
-
-## Troubleshooting
-
-### "NEXT_PUBLIC_API_URL nao configurada no frontend"
-
-- faltou env no `.env.local` ou no Vercel
-
-### "NEXT_PUBLIC_API_URL invalida"
-
-- use URL completa: `https://...`
-
-### "Sessao expirada. Faca login novamente."
-
-- cookie expirou/revogado
-- fazer login novamente
-
-### Erros de CORS
-
-- backend precisa liberar somente o dominio do frontend em `CORS_ALLOW_ORIGINS`
-- fazer redeploy do backend apos alterar envs
-
-### Login funciona, mas dashboard falha
-
-- confirmar que backend esta setando cookie
-- confirmar `credentials: include` ativo (ja esta no app)
-- revisar `AUTH_COOKIE_*` no backend
-
-## Estado atual
-
-Frontend pronto para testes reais com foco em:
-
-- onboarding simples
-- autenticacao por cookie HttpOnly
-- dashboard de chave AES-256 + nonce
-- pagina de conta com controles de seguranca
-- validacoes de uso para reduzir erro operacional
+- `NEXT_PUBLIC_API_URL nao configurada`: faltou env
+- `NEXT_PUBLIC_API_URL invalida`: URL sem `https://` ou incompleta
+- `Sessao expirada`: cookie revogado/expirado, fazer login novamente
+- erro de CORS: revisar `CORS_ALLOW_ORIGINS` no backend
